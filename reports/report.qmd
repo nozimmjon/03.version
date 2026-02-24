@@ -1,0 +1,101 @@
+---
+title: "Uzbekistan credit survey — replicated report (reproducible)"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+library(here)
+library(gt)
+library(htmltools)
+```
+
+## Inputs
+
+- Data: `data/raw/survey_master_cleaned_v1.xlsx`
+- This report is generated from cached outputs produced by `targets::tar_make()`.
+
+## Charts
+
+### Figure 1. Sources used when extra money is needed
+
+```{r}
+knitr::include_graphics(here::here("outputs/figures/fig1_extra_funds_sources.png"))
+```
+
+### Figure 2. Borrowing sources by region
+
+```{r}
+knitr::include_graphics(here::here("outputs/figures/fig2_sources_by_region.png"))
+```
+
+### Figure 3. Main reasons for delaying financial obligations
+
+```{r}
+knitr::include_graphics(here::here("outputs/figures/fig3_late_reasons.png"))
+```
+
+### Figure 4. Share of income going to credit payments
+
+```{r}
+knitr::include_graphics(here::here("outputs/figures/fig4_debt_burden.png"))
+```
+
+### Figure 5. Main spending purposes of microloans
+
+```{r}
+knitr::include_graphics(here::here("outputs/figures/fig5_microloan_purpose.png"))
+```
+
+### Figure 6. Whether borrowers read the contract
+
+```{r}
+knitr::include_graphics(here::here("outputs/figures/fig6_read_contract.png"))
+```
+
+### Figure 7–9. Logistic regression results (odds ratios)
+
+```{r}
+knitr::include_graphics(here::here("outputs/figures/fig7_logit_on_time.png"))
+knitr::include_graphics(here::here("outputs/figures/fig8_logit_late30.png"))
+knitr::include_graphics(here::here("outputs/figures/fig9_logit_npl.png"))
+```
+
+## Tables
+
+### Table 6. Key study parameters
+
+```{r}
+htmltools::includeHTML(here::here("outputs/tables/table_06_parameters.html"))
+```
+
+### Table 7. Borrowers by credit type
+
+```{r}
+htmltools::includeHTML(here::here("outputs/tables/table_07_credit_type.html"))
+```
+
+### Table 8. Borrowers by payment status
+
+```{r}
+htmltools::includeHTML(here::here("outputs/tables/table_08_payment_status.html"))
+```
+
+### Table 9. Demographic profile
+
+```{r}
+htmltools::includeHTML(here::here("outputs/tables/table_09_demographics.html"))
+```
+
+### Table 10. Model quality metrics
+
+```{r}
+htmltools::includeHTML(here::here("outputs/tables/table_10_model_quality.html"))
+```
