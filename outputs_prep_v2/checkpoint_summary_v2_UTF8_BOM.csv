@@ -1,0 +1,14 @@
+﻿"metric","value"
+"raw_rows",2139
+"raw_cols",248
+"dropped_exact_duplicates",8
+"rows_after_drop",2131
+"cols_after_drop_empty",248
+"dummy_cols_count",172
+"borrowers_n",1525
+"nonborrowers_n",606
+"has_loan_missing_n",0
+"q24_invalid_multi_select_n",0
+"cardinality_violations_n",151
+"skip_logic_violations_n",0
+"constraint_fixes_n",3
