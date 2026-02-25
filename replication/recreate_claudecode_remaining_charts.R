@@ -164,7 +164,7 @@ if (length(q3112_cols) > 0) {
     summarise(across(everything(), ~ sum(as.numeric(.x), na.rm = TRUE))) |>
     pivot_longer(everything(), names_to = "factor", values_to = "n") |>
     mutate(
-      factor = str_remove(factor, "^3\\.11\\.2\\. .*?/"),
+      factor = str_remove(factor, "^3\.11\.2\. .*?/"),
       pct = n / nrow(borrowers)
     ) |>
     arrange(pct) |>
@@ -175,7 +175,6 @@ if (length(q3112_cols) > 0) {
     labs(title = "Most effective reminder channels (Q3.11.2)", x = "Share of borrowers", y = NULL)
   save_chart(c26, "chart_26_effective_reminders_ggplot2.png", 12, 6)
 }
-
 
 # 27-30 family credit
 q27b_cols <- names(df)[str_starts(names(df), "2.7.б.") & str_detect(names(df), fixed("/"))]
