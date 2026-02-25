@@ -6,6 +6,18 @@ read_config <- function() {
 }
 
 import_raw <- function(cfg) {
+  csv_path <- cfg$data$csv_path
+  if (!is.null(csv_path)) {
+    csv_abs <- here::here(csv_path)
+    if (file.exists(csv_abs)) {
+      df <- readr::read_csv(csv_abs, show_col_types = FALSE)
+      df <- janitor::clean_names(df) %>%
+        dplyr::mutate(dplyr::across(where(is.logical), as.character)) %>%
+        tibble::as_tibble()
+      return(df)
+    }
+  }
+
   path <- here::here(cfg$data$excel_path)
   sheet <- cfg$data$sheet
   # Read with a larger type-guessing window to reduce "Expecting logical ... got text" warnings.

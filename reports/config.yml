@@ -1,4 +1,5 @@
 data:
+  csv_path: outputs_prep_v2/survey_master_cleaned_v2.csv
   excel_path: data/raw/survey_master_cleaned_v1.xlsx
   sheet: 1
 vars:
