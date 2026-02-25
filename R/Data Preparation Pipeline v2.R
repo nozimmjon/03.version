@@ -113,8 +113,13 @@ write_outputs <- function(df, stem, out_dir = OUT_DIR) {
 
 # Detect dummy blocks by "/" separator
 get_dummy_blocks <- function(nms) {
-  dummy_cols <- nms[str_detect(nms, "/")]
-  blocks <- unique(str_split_fixed(dummy_cols, "/", 2)[,1])
+  # A real checkbox dummy is encoded as:
+  #   <question text ending with ?>/<option label>
+  # This avoids misclassifying numeric questions that mention "/" in the question body,
+  # such as Q2.4.1 ("кредит/қарз/насия").
+  is_dummy <- str_detect(nms, "\\?/\\s*[^?]+$")
+  dummy_cols <- nms[is_dummy]
+  blocks <- unique(str_replace(dummy_cols, "/[^/]*$", ""))
   list(dummy_cols = dummy_cols, blocks = blocks)
 }
 
@@ -145,8 +150,8 @@ build_registry <- function(df) {
     )
   ) %>%
     mutate(
-      dummy_block = ifelse(type == "dummy", str_split_fixed(column, "/", 2)[,1], NA_character_),
-      dummy_option = ifelse(type == "dummy", str_split_fixed(column, "/", 2)[,2], NA_character_)
+      dummy_block = ifelse(type == "dummy", str_replace(column, "/[^/]*$", ""), NA_character_),
+      dummy_option = ifelse(type == "dummy", str_extract(column, "[^/]*$"), NA_character_)
     )
 }
 
