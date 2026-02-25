@@ -164,7 +164,7 @@ if (length(q3112_cols) > 0) {
     summarise(across(everything(), ~ sum(as.numeric(.x), na.rm = TRUE))) |>
     pivot_longer(everything(), names_to = "factor", values_to = "n") |>
     mutate(
-      factor = str_remove(factor, "^3\.11\.2\. .*?/"),
+      factor = str_remove(factor, "^3\\.11\\.2\\. .*?/"),
       pct = n / nrow(borrowers)
     ) |>
     arrange(pct) |>
