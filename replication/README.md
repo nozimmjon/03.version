@@ -10,7 +10,7 @@ All scripts use:
 - `recreate_claudecode_charts.R`: Block 1 charts (01–08).
 - `recreate_claudecode_block2_charts.R`: Block 2 charts (09–16).
 - `recreate_claudecode_remaining_charts.R`: Remaining descriptive charts (17–23, 25–30, 33–38).
-- `recreate_claudecode_tables.R`: Tables 01–13 in report order (CSV + optional HTML via `gt`).
+- `recreate_claudecode_tables.R`: Tables 01–13 in report order (CSV + styled HTML via `gt`, with publication-style formatting).
 
 ## Table planning assets
 - `table_generation_plan.md`: revised roadmap aligned to Word report structure.
