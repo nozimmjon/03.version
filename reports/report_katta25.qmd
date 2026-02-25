@@ -24,9 +24,9 @@ table_paths <- sort(list.files(here::here("outputs/tables/replication"), pattern
 
 ## Метод и источник данных
 
-- Базовый источник: `outputs_prep_v2/survey_master_cleaned_v2.csv`.
-- Все графики собраны из репликационных R-скриптов в `replication/`.
-- Таблицы 1–13 воспроизводятся в `outputs/tables/replication/`.
+-   Базовый источник: `outputs_prep_v2/survey_master_cleaned_v2.csv`.
+-   Все графики собраны из репликационных R-скриптов в `replication/`.
+-   Таблицы 1–13 воспроизводятся в `outputs/tables/replication/`.
 
 ## Графики
 
