@@ -1,0 +1,94 @@
+version: 1
+source_data: outputs_prep_v2/survey_master_cleaned_v2.csv
+output_dir: outputs/tables/replication
+tables:
+  - table_id: table_01_income_levels
+    report_label: "1-жадвал"
+    section: "III"
+    source_questions: ["1.10"]
+    population: all
+    metric_type: single_choice_share
+
+  - table_id: table_02_npl_cause_categories
+    report_label: "2-жадвал"
+    section: "IV"
+    source_questions: ["3.7"]
+    population: borrowers
+    metric_type: multi_select_category_summary
+
+  - table_id: table_03_contract_familiarity
+    report_label: "3-жадвал"
+    section: "V"
+    source_questions: ["3.4"]
+    population: borrowers
+    metric_type: status_crosstab
+
+  - table_id: table_04_collection_methods_by_status
+    report_label: "4-жадвал"
+    section: "VI"
+    source_questions: ["3.9"]
+    population: borrowers
+    metric_type: status_crosstab_multi_select
+
+  - table_id: table_05_family_nonpayment_reasons
+    report_label: "5-жадвал"
+    section: "VII"
+    source_questions: ["2.7.б"]
+    population: family_credit
+    metric_type: multi_select_share
+
+  - table_id: table_06_research_parameters
+    report_label: "6-жадвал"
+    section: "Appendix"
+    source_questions: ["has_loan", "region"]
+    population: all
+    metric_type: key_parameters
+
+  - table_id: table_07_credit_type_distribution
+    report_label: "7-жадвал"
+    section: "Appendix"
+    source_questions: ["kredit_turi"]
+    population: borrowers
+    metric_type: single_choice_share
+
+  - table_id: table_08_payment_status_distribution
+    report_label: "8-жадвал"
+    section: "Appendix"
+    source_questions: ["holat1"]
+    population: borrowers
+    metric_type: single_choice_share
+
+  - table_id: table_09_demographic_profile
+    report_label: "9-жадвал"
+    section: "Appendix"
+    source_questions: ["1.1", "1.2", "1.4", "1.10"]
+    population: all
+    metric_type: grouped_summary
+
+  - table_id: table_10_model_quality
+    report_label: "10-жадвал"
+    section: "Appendix"
+    source_questions: ["is_npl", "predictors"]
+    population: borrowers
+    metric_type: model_quality
+
+  - table_id: table_11_statistical_summary
+    report_label: "11-жадвал"
+    section: "Appendix"
+    source_questions: ["numeric_predictors"]
+    population: borrowers
+    metric_type: statistical_summary
+
+  - table_id: table_12_econometric_results
+    report_label: "12-жадвал"
+    section: "Appendix"
+    source_questions: ["is_npl", "predictors"]
+    population: borrowers
+    metric_type: econometric_coefficients
+
+  - table_id: table_13_correlation_matrix
+    report_label: "13-жадвал"
+    section: "Appendix"
+    source_questions: ["numeric_predictors"]
+    population: borrowers
+    metric_type: correlation_matrix
