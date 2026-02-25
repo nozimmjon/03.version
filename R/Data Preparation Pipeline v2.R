@@ -84,6 +84,27 @@ to01 <- function(x) {
   0L
 }
 
+is_binary_like_column <- function(x) {
+  if (is.logical(x)) return(TRUE)
+
+  if (is.numeric(x)) {
+    vals <- unique(x[!is.na(x)])
+    return(length(vals) == 0 || all(vals %in% c(0, 1)))
+  }
+
+  s <- str_to_lower(str_trim(as.character(x)))
+  s[s %in% c("", "nan", "none", "null")] <- NA_character_
+  vals <- unique(s[!is.na(s)])
+
+  if (length(vals) == 0) return(TRUE)
+
+  allowed <- c("1", "0", "true", "false", "ҳа", "ha", "yes", "y", "йўқ", "yo'q", "yo‘q", "yoq", "no", "n")
+  if (all(vals %in% allowed)) return(TRUE)
+
+  suppressWarnings(num_vals <- as.numeric(vals))
+  all(!is.na(num_vals) & num_vals %in% c(0, 1))
+}
+
 write_csv_utf8_bom <- function(df, path) {
   con <- file(path, open = "wb")
   on.exit(close(con), add = TRUE)
@@ -113,11 +134,19 @@ write_outputs <- function(df, stem, out_dir = OUT_DIR) {
 
 # Detect dummy blocks by "/" separator
 get_dummy_blocks <- function(nms) {
-  # A real checkbox dummy is encoded as:
-  #   <question text ending with ?>/<option label>
-  # This avoids misclassifying numeric questions that mention "/" in the question body,
-  # such as Q2.4.1 ("кредит/қарз/насия").
-  is_dummy <- str_detect(nms, "\\?/\\s*[^?]+$")
+  # Checkbox dummies are exported as <question stem>/<option label>.
+  # BUT some non-dummy questions also contain "/" inside wording
+  # (e.g., "кредит/қарз/насия"), so we combine two signals:
+  #   1) explicit ?/option pattern, OR
+  #   2) multiple columns sharing the same stem before the final slash.
+  has_slash <- str_detect(nms, "/")
+  stem <- str_replace(nms, "/[^/]*$", "")
+  stem_n <- as.integer(table(stem)[stem])
+
+  is_question_option <- str_detect(nms, "\\?/\\s*[^?]+$")
+  is_repeated_stem <- has_slash & stem_n > 1L
+
+  is_dummy <- has_slash & (is_question_option | is_repeated_stem)
   dummy_cols <- nms[is_dummy]
   blocks <- unique(str_replace(dummy_cols, "/[^/]*$", ""))
   list(dummy_cols = dummy_cols, blocks = blocks)
@@ -241,15 +270,27 @@ matrix_cols <- names(df)[
 matrix_cols <- matrix_cols[str_detect(matrix_cols, "/")]  # only the slash-encoded ones
 
 # 4.2 Convert only non-matrix dummy cols to 0/1
+# IMPORTANT: only convert columns that are actually binary-like in raw values.
+# This protects matrix-like amount questions (e.g., Q2.3) that use "/" in headers
+# but contain categorical values ("5-20 млн", "0 (олмайман)", etc.).
 dummy_cols_nonmatrix <- setdiff(dummy_cols, matrix_cols)
+dummy_cols_binary <- dummy_cols_nonmatrix[
+  vapply(df[dummy_cols_nonmatrix], is_binary_like_column, logical(1))
+]
+dummy_cols_nonbinary <- setdiff(dummy_cols_nonmatrix, dummy_cols_binary)
 
-if (length(dummy_cols_nonmatrix) > 0) {
+if (length(dummy_cols_binary) > 0) {
   df <- df %>%
-    mutate(across(all_of(dummy_cols_nonmatrix), ~ vapply(., to01, integer(1))))
+    mutate(across(all_of(dummy_cols_binary), ~ vapply(., to01, integer(1))))
+}
+
+if (length(dummy_cols_nonbinary) > 0) {
+  message("ℹ Preserving non-binary slash columns without 0/1 conversion: ", length(dummy_cols_nonbinary))
+  print(dummy_cols_nonbinary)
 }
 
 # ====== [CHANGED / ADDED] STEP 4.3 QC: detect any remaining non-numeric slash columns ======
-non_numeric_slash <- dummy_cols_nonmatrix[!vapply(df[dummy_cols_nonmatrix], is.numeric, logical(1))]
+non_numeric_slash <- dummy_cols_binary[!vapply(df[dummy_cols_binary], is.numeric, logical(1))]
 
 if (length(non_numeric_slash) > 0) {
   message("⚠ Non-numeric slash columns AFTER dummy normalization (these can break rowSums/cardinality checks):")
