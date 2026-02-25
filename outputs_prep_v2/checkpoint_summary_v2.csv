@@ -4,7 +4,7 @@ raw_cols,248
 dropped_exact_duplicates,8
 rows_after_drop,2131
 cols_after_drop_empty,248
-dummy_cols_count,147
+dummy_cols_count,166
 borrowers_n,1525
 nonborrowers_n,606
 has_loan_missing_n,0
