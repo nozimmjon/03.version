@@ -42,7 +42,9 @@ make_analysis_data <- function(df, cfg) {
       ),
       y_on_time = if_else(payment_group == "On-time", 1L, 0L),
       y_late30 = if_else(payment_group == "≤30 days late", 1L, 0L),
-      y_npl = if_else(payment_group == "NPL (≥3 months)", 1L, 0L)
+      y_npl = if_else(payment_group == "NPL (≥3 months)", 1L, 0L),
+      repay_group = payment_group,
+      is_npl = payment_group == "NPL (≥3 months)"
     ) %>%
     mutate(
       region = as.factor(.data[[region]]),

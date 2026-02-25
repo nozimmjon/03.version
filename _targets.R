@@ -15,6 +15,7 @@ source(here::here("R/10_descriptives.R"))
 source(here::here("R/20_charts.R"))
 source(here::here("R/30_models.R"))
 source(here::here("R/40_outputs.R"))
+source(here::here("R/70_replication_bridge.R"))
 
 list(
   tar_target(cfg, read_config(), format = "rds"),
@@ -100,5 +101,18 @@ list(
       save_plot(fig9, here::here("outputs/figures/fig9_logit_npl.png"), width=8.2, height=5.6)
     )
     paths
-  }, format="file")
+  }, format="file"),
+
+  # Replication-based report assets (v2)
+  tar_target(replication_charts, run_replication_charts(), format = "file"),
+  tar_target(replication_tables, run_replication_tables(), format = "file"),
+  tar_target(report_katta_html, {
+    quarto::quarto_render(here::here("reports/report_katta25.qmd"), output_format = "html")
+    here::here("outputs/report/report_katta25.html")
+  }, format = "file", deployment = "main"),
+  tar_target(report_katta_docx, {
+    quarto::quarto_render(here::here("reports/report_katta25.qmd"), output_format = "docx")
+    here::here("outputs/report/report_katta25.docx")
+  }, format = "file", deployment = "main")
+
 )

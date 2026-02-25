@@ -41,3 +41,14 @@ Outputs:
 
 ## Optional: renv
 If you want locked package versions, you can use `renv`. This repository includes a minimal `renv.lock` (with an R section) so that `renv::init()` / `renv::snapshot()` works cleanly in your environment.
+
+
+### Replication-first report build (Доклад_катта-25)
+
+A new replication-first report entrypoint is available:
+
+```r
+targets::tar_make(names = c("replication_charts", "replication_tables", "report_katta_html", "report_katta_docx"))
+```
+
+This path uses cleaned v2 CSV outputs (`outputs_prep_v2/survey_master_cleaned_v2.csv`) and the replication scripts in `replication/` to assemble a Quarto report at `reports/report_katta25.qmd`.

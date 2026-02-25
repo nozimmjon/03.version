@@ -1,0 +1,51 @@
+---
+title: "Доступность кредитования в Узбекистане"
+subtitle: "Репликация Доклад_катта-25"
+format:
+  html:
+    toc: true
+    number-sections: true
+  docx:
+    toc: true
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+library(here)
+library(knitr)
+library(htmltools)
+chart_paths <- sort(list.files(here::here("replication/charts_ggplot2"), pattern = "^chart_\\d+.*_ggplot2\\.png$", full.names = TRUE))
+table_paths <- sort(list.files(here::here("outputs/tables/replication"), pattern = "^table_\\d+.*\\.html$", full.names = TRUE))
+```
+
+## Метод и источник данных
+
+- Базовый источник: `outputs_prep_v2/survey_master_cleaned_v2.csv`.
+- Все графики собраны из репликационных R-скриптов в `replication/`.
+- Таблицы 1–13 воспроизводятся в `outputs/tables/replication/`.
+
+## Графики
+
+```{r}
+for (p in chart_paths) {
+  id <- sub("_.*", "", basename(p))
+  cat("### ", id, "\n\n", sep = "")
+  print(knitr::include_graphics(p))
+  cat("\n\n")
+}
+```
+
+## Таблицы
+
+```{r}
+for (p in table_paths) {
+  id <- sub("_.*", "", basename(p))
+  cat("### ", id, "\n\n", sep = "")
+  print(htmltools::includeHTML(p))
+  cat("\n\n")
+}
+```
