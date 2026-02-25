@@ -156,22 +156,26 @@ c25 <- borrowers |>
   theme(axis.text.x = element_text(angle = 25, hjust = 1))
 save_chart(c25, "chart_25_collection_by_status_ggplot2.png", 14, 8)
 
-# 26 effective reminders (use Q3.10/3.11 proxies if present)
-rem_cols <- names(df)[str_starts(names(df), "3.10") | str_starts(names(df), "3.11")]
-if (length(rem_cols) > 0) {
+# 26 effective reminders (Q3.11.2 only)
+q3112_cols <- names(df)[str_starts(names(df), "3.11.2.") & str_detect(names(df), fixed("/"))]
+if (length(q3112_cols) > 0) {
   c26 <- borrowers |>
-    select(all_of(rem_cols)) |>
-    pivot_longer(everything(), names_to = "factor", values_to = "v") |>
-    mutate(v = as.numeric(v)) |>
-    group_by(factor) |>
-    summarise(pct = mean(v, na.rm = TRUE), .groups = "drop") |>
-    mutate(factor = str_remove(factor, "^3\\.(10|11)\\.?")) |>
+    select(all_of(q3112_cols)) |>
+    summarise(across(everything(), ~ sum(as.numeric(.x), na.rm = TRUE))) |>
+    pivot_longer(everything(), names_to = "factor", values_to = "n") |>
+    mutate(
+      factor = str_remove(factor, "^3\\.11\\.2\\. .*?/"),
+      pct = n / nrow(borrowers)
+    ) |>
+    arrange(pct) |>
     ggplot(aes(pct, fct_reorder(factor, pct))) +
     geom_col(fill = "#16a085") +
-    scale_x_continuous(labels = percent_format()) +
-    labs(title = "Effective reminders / relationship factors", x = "Share", y = NULL)
+    geom_text(aes(label = paste0(percent(pct, accuracy = 0.1), " (N=", n, ")")), hjust = -0.1, size = 3) +
+    scale_x_continuous(labels = percent_format(), expand = expansion(mult = c(0, 0.2))) +
+    labs(title = "Most effective reminder channels (Q3.11.2)", x = "Share of borrowers", y = NULL)
   save_chart(c26, "chart_26_effective_reminders_ggplot2.png", 12, 6)
 }
+
 
 # 27-30 family credit
 q27b_cols <- names(df)[str_starts(names(df), "2.7.б.") & str_detect(names(df), fixed("/"))]
