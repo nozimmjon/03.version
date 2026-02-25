@@ -2,6 +2,8 @@
 
 This folder reproduces Claude-generated chart and table artifacts from the cleaned v2 pipeline dataset.
 
+> For full end-to-end workflow (raw data cleaning -> QA -> replication -> legacy scripts), see the repository-level `README.md`.
+
 ## Data source
 All scripts use:
 - `outputs_prep_v2/survey_master_cleaned_v2.csv`
