@@ -22,13 +22,14 @@ status_colors <- c("NPL (3+ months)" = "#e74c3c", "1-3 month delay" = "#f39c12",
 df <- read_csv(input_file, show_col_types = FALSE) |>
   mutate(
     has_loan = as.integer(has_loan),
-    is_npl = str_detect(holat1 %||% "", "NPL|3 ой"),
+    holat1_clean = coalesce(holat1, ""),
     repay_group = case_when(
-      str_detect(holat1 %||% "", "NPL|3 ой") ~ "NPL (3+ months)",
-      str_detect(holat1 %||% "", "1-3") ~ "1-3 month delay",
-      str_detect(holat1 %||% "", "вақтида") ~ "On-time",
+      str_detect(holat1_clean, "NPL") ~ "NPL (3+ months)",
+      str_detect(holat1_clean, "1-3 ой") ~ "1-3 month delay",
+      str_detect(holat1_clean, "ўз вақтида") ~ "On-time",
       TRUE ~ NA_character_
-    )
+    ),
+    is_npl = repay_group == "NPL (3+ months)"
   )
 
 borrowers <- df |> filter(has_loan == 1)

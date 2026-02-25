@@ -187,10 +187,11 @@ save_chart(chart14, "chart_14_borrowing_reason_ggplot2.png", 10, 6)
 # 15. Top credit purposes by repayment status
 status_groups <- df |>
   mutate(
+    holat1_clean = coalesce(holat1, ""),
     repay_group = case_when(
-      str_detect(holat1, "NPL|3 ой") ~ "NPL (3+ months)",
-      str_detect(holat1, "1-3") ~ "1-3 month delay",
-      str_detect(holat1, "вақтида") ~ "On-time",
+      str_detect(holat1_clean, "NPL") ~ "NPL (3+ months)",
+      str_detect(holat1_clean, "1-3 ой") ~ "1-3 month delay",
+      str_detect(holat1_clean, "ўз вақтида") ~ "On-time",
       TRUE ~ NA_character_
     )
   ) |>
