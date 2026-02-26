@@ -158,3 +158,87 @@ test -f outputs_prep_v2/EXPORT_MANIFEST_v2.xlsx && echo "manifest OK"
   - `claudecodes/*.py` scripts and associated image artifacts
 
 If you are onboarding a new collaborator, start with the canonical path above and only use legacy scripts when you need to trace previously published/intermediate outputs.
+
+---
+
+## 8) How a top-tier R researcher would approach this project
+
+A highly experienced R researcher would usually treat this as a **reproducible empirical pipeline** with strict separation between data engineering, statistical analysis, and reporting.
+
+### A) Start with reproducibility as a first-class requirement
+
+- Initialize project-level dependency management with `renv` so every collaborator can restore the exact package environment.
+- Pin an explicit random seed policy for all stochastic procedures.
+- Keep all paths relative via `here::here()` and avoid machine-specific absolute paths.
+
+Minimal setup pattern:
+
+```r
+# once per project
+install.packages("renv")
+renv::init()
+
+# at script start
+set.seed(20260217)
+```
+
+### B) Formalize a data contract before modeling
+
+- Define a compact data dictionary for each key variable (`has_loan`, repayment outcomes, demographic fields, matrix blocks).
+- Encode allowable ranges/categories and missingness semantics.
+- Fail fast on contract violations using assertions (for example with `checkmate`/`assertthat` or custom validators).
+
+### C) Move from script-based to function-based pipeline design
+
+- Refactor long scripts into small, testable functions (load, normalize, validate, split, export).
+- Centralize constants and mappings (column renames, value maps, skip-logic rules).
+- Use a lightweight orchestration layer (`targets` or `drake`) if iterative reruns are frequent.
+
+### D) Build statistical analysis with explicit identification logic
+
+- Pre-register (internally, at minimum) model specifications, covariate sets, and robustness checks.
+- Separate descriptive, inferential, and predictive objectives.
+- Report uncertainty rigorously (confidence intervals, clustered/robust SE where needed, sensitivity checks).
+
+### E) Make outputs publication-ready and fully auditable
+
+- Generate all tables/figures from code only (no manual edits).
+- Keep a machine-readable table/chart registry (already present in `replication/table_registry.yml`) and treat it as the single source of truth.
+- Add run metadata (timestamp, git commit hash, package versions) to exported artifacts.
+
+### F) Add automated quality gates
+
+- Run the cleaning script + audit script in CI (GitHub Actions) on every change.
+- Add unit tests for critical transformation logic (for example with `testthat`).
+- Add snapshot tests for key tables so unexpected changes are flagged early.
+
+### G) Suggested practical upgrade path for this repo
+
+1. Add `renv.lock` and a short `renv` bootstrap section to this README.
+2. Refactor `R/Data Preparation Pipeline v2.R` into modular helper functions under `R/`.
+3. Add `tests/testthat/` coverage for skip logic, cardinality checks, and borrower/non-borrower splits.
+4. Optionally adopt `targets` to make full regeneration deterministic and incremental.
+
+This approach keeps your existing workflow intact while moving it toward the standards used in high-quality empirical research labs: reproducibility, defensible inference, and transparent auditability.
+
+---
+
+## 9) R-only professional rebuild (new canonical path)
+
+If you want to work **only in R** with modern data-management standards, use the rebuild pipeline in `R/rebuild/`.
+
+Run:
+
+```bash
+Rscript R/rebuild/scripts/run_pipeline.R
+```
+
+This path provides:
+
+- modular R functions,
+- explicit data-contract validation,
+- `targets`-based orchestration,
+- reproducible artifact exports and a run manifest,
+- test scaffolding under `R/rebuild/tests/testthat/`.
+
+See `R/rebuild/README.md` for full usage.
