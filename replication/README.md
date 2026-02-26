@@ -34,3 +34,13 @@ Rscript replication/recreate_claudecode_tables.R
 ```
 
 If `Rscript` is unavailable, run from an interactive R session.
+
+## One-command run
+From the project root, run:
+
+```bash
+Rscript replication/run_full_replication.R
+```
+
+This executes cleaning, audit, chart recreation, and table recreation end-to-end and writes run diagnostics to `outputs/`.
+
