@@ -74,6 +74,19 @@ This script writes the canonical cleaned files and logs into `outputs_prep_v2/`,
 - `checkpoint_summary_v2.*`
 - `EXPORT_MANIFEST_v2.xlsx`
 
+### Step A.1 — Run codebook-driven raw validation (Phase 02)
+
+```bash
+Rscript R/02_validate_raw.R
+```
+
+This validates raw input against `codebook/codebook.csv` and writes QA artifacts to `outputs/validation_reports/`, including:
+
+- `02_validate_raw_pointblank.html`
+- `02_validate_raw_failures.csv` (if failing checks exist)
+- `02_validate_raw_skip_failures.csv` (if skip-rule violations exist)
+- `02_validate_raw_summary.csv`
+
 ### Step B — Run the cleaning audit
 
 ```bash
@@ -95,6 +108,26 @@ Outputs are written to:
 
 - `replication/charts_ggplot2/` (PNG charts)
 - `outputs/tables/replication/` (CSV + HTML tables)
+
+### Step E — One-command full replication (recommended)
+
+```bash
+Rscript replication/run_full_replication.R
+```
+
+This orchestrates the full reproducibility chain in sequence:
+
+1. `R/Data Preparation Pipeline v2.R`
+2. `python audit_cleaning.py`
+3. all three chart recreation scripts
+4. `replication/recreate_claudecode_tables.R`
+
+It also writes:
+
+- `outputs/replication_run_log.txt`
+- `outputs/replication_run_manifest.csv`
+
+The manifest validates that key cleaned files, chart outputs, and table outputs were all generated.
 
 ### Step D — (Optional) Run legacy block/report scripts
 

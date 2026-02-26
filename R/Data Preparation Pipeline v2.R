@@ -18,11 +18,20 @@ suppressPackageStartupMessages({
 # -----------------------------
 # USER CONFIG
 # -----------------------------
-RAW_FILE  <- "D:/old/Desktop/Cerr_old/Cerr/2025/58. Марказий банк тадқиқоти/replication/03.version/dataset17022026.xlsx"
+RAW_FILE  <- Sys.getenv("RAW_FILE", unset = "dataset17022026.xlsx")
 RAW_SHEET <- 1
-OUT_DIR   <- "outputs_prep_v2"
+OUT_DIR   <- Sys.getenv("OUT_DIR", unset = "outputs_prep_v2")
 VERSION   <- "v2"
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
+
+if (!file.exists(RAW_FILE)) {
+  legacy_raw <- "D:/old/Desktop/Cerr_old/Cerr/2025/58. Марказий банк тадқиқоти/replication/03.version/dataset17022026.xlsx"
+  if (file.exists(legacy_raw)) {
+    RAW_FILE <- legacy_raw
+  } else {
+    stop("Raw file not found. Set env var RAW_FILE or place dataset17022026.xlsx in the project root.")
+  }
+}
 
 # Questionnaire anchor strings (edit only if questionnaire wording changes)
 Q24_MAIN <- "2.4. Бугунги кунда номингизда қарз, кредит ёки насия (рассрочка) мавжудми?"
