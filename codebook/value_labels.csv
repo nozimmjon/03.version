@@ -1,0 +1,291 @@
+﻿var_name,code,label_uz,label_en,sort_order
+region,karakalpakstan,Қорақалпоғистон Республикаси,Republic of Karakalpakstan,1
+region,andijan,Андижон вилояти,Andijan region,2
+region,bukhara,Бухоро вилояти,Bukhara region,3
+region,jizzakh,Жиззах вилояти,Jizzakh region,4
+region,kashkadarya,Қашқадарё вилояти,Kashkadarya region,5
+region,navoi,Навоий вилояти,Navoi region,6
+region,namangan,Наманган вилояти,Namangan region,7
+region,samarkand,Самарқанд вилояти,Samarkand region,8
+region,surkhandarya,Сурхондарё вилояти,Surkhandarya region,9
+region,sirdarya,Сирдарё вилояти,Sirdarya region,10
+region,tashkent_region,Тошкент вилояти,Tashkent region,11
+region,fergana,Фарғона вилояти,Fergana region,12
+region,khorezm,Хоразм вилояти,Khorezm region,13
+region,tashkent_city,Тошкент шаҳри,Tashkent city,14
+obs_type,list_1500,1500 талик рўйхат (Марказий банк),CBU 1500-record list,1
+obs_type,list_500,500 талик рўйхат,500-record list,2
+list_type,main,Асосий рўйхат,Main list,1
+list_type,reserve,Захирадаги рўйхат,Reserve list,2
+list_type,additional,Қўшимча рўйхат,Additional list,3
+credit_type_admin,mortgage,Ипотека кредити,Mortgage,1
+credit_type_admin,family,Оилавий,Family entrepreneurship,2
+credit_type_admin,microloan,Микрокарз,Microloan,3
+credit_type_admin,consumer,Истеъмол кредити,Consumer credit,4
+credit_type_admin,auto,Автокредит,Auto credit,5
+credit_type_admin,microcredit,Микрокредит,Microcredit,6
+credit_type_admin,education,Таълим кредити,Education credit,7
+credit_type_admin,other,Бошқа,Other,8
+holat1,on_time,Қарздорликни ўз вақтида тўлаётган мижозлар,On-time payer,1
+holat1,delayed_1to3m,1–3 ой кечикиш билан тўлаётган мижозлар,1–3 month delay,2
+holat1,npl_3m_plus,3 ой ва ундан кўп муддат (NPL) тўламаётган мижозлар,NPL (3+ months overdue),3
+consent,yes,Ҳа,Yes,1
+consent,no,Йўқ,No,2
+gender,male,Эркак,Male,1
+gender,female,Аёл,Female,2
+marital_status,never_married,Турмуш қурмаган,Never married,1
+marital_status,married,Турмуш қурган,Married,2
+marital_status,widowed_divorced,Бева/Ажрашган,Widowed or divorced,3
+education,secondary,Ўрта таълим (мактаб/лицей),Secondary (school/lyceum),1
+education,vocational,Ўрта махсус/касб-ҳунар (техникум/коллеж),Vocational/technical,2
+education,higher,Олий таълим (бакалавр/магистр),Higher education,3
+employment,government,Давлат ташкилотида ишлайман,Government employee,1
+employment,private,Хусусий секторда ёлланиб ишлайман,Private sector employee,2
+employment,self_employed,Ўз-ўзини банд қилган/мустақил тадбиркор,Self-employed/entrepreneur,3
+employment,student,Талаба/Ўқувчи,Student,4
+employment,pensioner,Нафақадаман,Pensioner,5
+employment,unemployed,Вақтинча ишламайман/иш қидиряпман,Unemployed/job-seeking,6
+employment,homemaker,Уй бекаси/болага қарайман,Homemaker,7
+employment,hard_to_say,Жавоб беришга қийналаман,Hard to say,8
+employment,other,Бошқа,Other,9
+income_sources,salary,Иш ҳақи,Salary/wages,1
+income_sources,self_employment,Мустақил тадбиркорлик фаолияти,Self-employment income,2
+income_sources,remittances,Халқаро пул ўтказмалари,International remittances,3
+income_sources,pension,Пенсия ёки нафақа,Pension/benefit,4
+income_sources,scholarship,Стипендия,Scholarship,5
+income_sources,rental,Мулкни ижарага бериш,Rental income,6
+income_sources,agriculture,Қишлоқ хўжалиги маҳсулотлари,Agricultural income,7
+income_sources,seasonal,Мавсумий ишлардан олинадиган даромад,Seasonal income,8
+income_sources,none,Доимий даромад манбаи мавжуд эмас,No regular income,9
+income_sources,other,Бошқа,Other,10
+hh_income_cat,lt5m,5 млн сўмгача,Less than 5M UZS,1
+hh_income_cat,5to10m,5–10 млн сўм,5–10M UZS,2
+hh_income_cat,10to20m,10–20 млн сўм,10–20M UZS,3
+hh_income_cat,20to50m,20–50 млн сўм,20–50M UZS,4
+hh_income_cat,gt50m,50 млн сўмдан юқори,More than 50M UZS,5
+hh_income_cat,hard_to_say,Жавоб беришга қийналаман,Hard to say,6
+credit_purpose_matrix_row,daily_expenses,Кундалик харажатлар учун,Daily expenses,1
+credit_purpose_matrix_row,healthcare,Соғлиқни сақлаш харажатлари учун,Healthcare,2
+credit_purpose_matrix_row,mobile_phone,Уяли алоқа воситасини сотиб олиш учун,Mobile phone purchase,3
+credit_purpose_matrix_row,mortgage,Ипотека (уй жой) хариди учун,Mortgage/housing,4
+credit_purpose_matrix_row,auto,Автомобил хариди учун,Auto purchase,5
+credit_purpose_matrix_row,wedding,Тўй ёки оилавий маросимлар учун,Wedding/family ceremony,6
+credit_purpose_matrix_row,appliances_furniture,Маиший техника/уй жиҳозлари учун,Appliances/furniture,7
+credit_purpose_matrix_row,debt_repayment,Бошқа қарзни тўлаш учун,Debt repayment,8
+credit_purpose_matrix_row,business,Бизнесни йўлга қўйиш/кенгайтириш учун,Business start/expansion,9
+credit_purpose_matrix_row,other_purposes,Бошқа мақсадлар учун,Other purposes,10
+credit_purpose_matrix_col,appropriate,Мақсадга мувофиқ,Appropriate,1
+credit_purpose_matrix_col,not_appropriate,Мақсадга мувофиқ эмас,Not appropriate,2
+credit_source_primary,banks,Банк ташкилотлари,Commercial banks,1
+credit_source_primary,formal_installment,Расмий насия хизматлари (Техномарт/Узум/Ишонч),Formal installment services,2
+credit_source_primary,informal_installment,Норасмий насия хизмати (бозорлар/дўконлар),Informal installment,3
+credit_source_primary,street_lenders,Кўчада фоиз эвазига пул берувчи норасмий шахслар,Street/informal money lenders,4
+credit_source_primary,mfi,Микромолия ташкилотлари,Microfinance institutions,5
+credit_source_primary,pawnshop,Ломбардлар,Pawnshops,6
+credit_source_primary,family_friends,Оила аъзолари/дўстлар/танишлар,Family/friends/acquaintances,7
+credit_source_primary,other,Бошқа манбалар,Other sources,8
+credit_source_primary,no_credit,Қарз олмасдан бошқа ечим қидирар эдим,Would seek other solution (no credit),9
+informal_reason,easy_fast,Қарз олиш осон ва тез,Easy and fast to obtain,1
+informal_reason,interest_free,Устамасиз (фоизсиз) олиш мумкин,Can obtain interest-free,2
+informal_reason,no_formal_income_needed,Расмий даромадсиз ҳам олиш мумкин,No formal income required,3
+informal_reason,religious,Диний сабаблар туфайли (рибо/фоиздан сақланиш),Religious reasons (avoid riba/interest),4
+informal_reason,bad_credit_history,Кредит тарихи ёмонлиги сабабли,Due to bad credit history,5
+informal_reason,banks_too_expensive,Банкларда кредит ставкаси ва харажатлари юқори,Banks are too expensive,6
+informal_reason,other,Бошқа сабаблар,Other reasons,7
+bank_reason,clear_legal,Банкда шартлар аниқ ва қонуний,Clear and legally regulated terms,1
+bank_reason,builds_credit_history,Банк кредит тарихи шаклланади,Builds credit history,2
+bank_reason,lower_interest,Фоизлари бошқаларга нисбатан камроқ,Lower interest rates,3
+bank_reason,has_contact_in_bank,Банкда танишим ишлайди,Have a contact in the bank,4
+bank_reason,large_amount_easier,Йирик суммани норасмий олиш қийин,Large amounts easier via bank,5
+bank_reason,convenient_online,Қулай ва осон (онлайн),Convenient and easy (online),6
+bank_reason,long_term_available,Узоқ муддатга олиш мумкин,Long-term credit available,7
+bank_reason,other,Бошқа сабаблар,Other reasons,8
+formal_other_reason,easy_fast,Қарз олиш осон ва тез (онлайн),Easy and fast (online),1
+formal_other_reason,interest_free,Устамасиз (фоизсиз) олиш мумкин,Can obtain interest-free,2
+formal_other_reason,no_formal_income_needed,Расмий даромадсиз ҳам олиш мумкин,No formal income required,3
+formal_other_reason,religious,Диний сабаблар туфайли,Religious reasons,4
+formal_other_reason,bad_credit_history,Кредит тарихи ёмонлиги учун,Due to bad credit history,5
+formal_other_reason,other,Бошқа сабаблар,Other reasons,6
+no_credit_reason,distrust_institutions,Молиявий ташкилотларга ишонмайман,Distrust financial institutions,1
+no_credit_reason,fear_debt_trap,Кредит тузоғига тушишдан қўрқаман,Fear of debt trap,2
+no_credit_reason,unstable_income,Даромадим барқарор эмас,Income is not stable,3
+no_credit_reason,sufficient_savings,Жамғармаларим етарли,Have sufficient savings,4
+no_credit_reason,hard_paperwork,Ҳужжатлар/расмийлаштириш жуда қийин,Paperwork is too difficult,5
+no_credit_reason,bad_experience_around,Атрофимдагилар ёмон тажрибага эга,People around me have bad experiences,6
+no_credit_reason,dont_understand_terms,Кредит шартларини тушунмайман,Do not understand credit terms,7
+no_credit_reason,religious,Эътиқод билан боғлиқ сабаблар,Religious reasons,8
+no_credit_reason,family_opposition,Оилам/яқинларим қарши,Family/relatives are against it,9
+no_credit_reason,other,Бошқа,Other,10
+has_loan_type,own_for_self,Ҳа — ўзимнинг номимга/ўзим учун,Yes — own name for myself,1
+has_loan_type,own_for_others,Ҳа — менинг номимга/бошқа биров учун (кафил),Yes — my name for someone else (straw borrower),2
+has_loan_type,others_for_self,Ҳа — бошқа бировнинг номига/ўзим учун,Yes — someone else's name for myself,3
+has_loan_type,no,Йўқ,No,4
+dsr_cat,lt10pct,10% дан кам,Less than 10%,1
+dsr_cat,10to20pct,10%–20%,10–20%,2
+dsr_cat,20to35pct,20%–35%,20–35%,3
+dsr_cat,35to50pct,35%–50%,35–50%,4
+dsr_cat,gt50pct,50% дан кўп,More than 50%,5
+dsr_cat,hard_to_say,Жавоб бериш қийин,Hard to say,6
+financial_buffer,zero,Умуман имкониятга эга эмасман,No buffer at all,1
+financial_buffer,1to2m,1–2 ой,1–2 months,2
+financial_buffer,3to4m,3–4 ой,3–4 months,3
+financial_buffer,5to6m,5–6 ой,5–6 months,4
+financial_buffer,gt6m,6 ойдан кўпроқ,More than 6 months,5
+financial_buffer,hard_to_say,Жавоб бериш қийин,Hard to say,6
+income_variability,stable,Барқарор/деярли ўзгармайди,Stable/barely changes,1
+income_variability,somewhat_variable,Бироз ўзгариб туради,Somewhat variable,2
+income_variability,highly_variable,Жуда ўзгарувчан/мавсумий,Highly variable/seasonal,3
+income_variability,hard_to_say,Жавоб бериш қийин,Hard to say,4
+credit_source_actual,commercial_bank,Тижорат банкидан,Commercial bank,1
+credit_source_actual,formal_installment,Расмий насия хизматидан,Formal installment service,2
+credit_source_actual,mfi,Микромолия ташкилотларидан,Microfinance institution,3
+credit_source_actual,pawnshop,Ломбардлардан,Pawnshop,4
+credit_source_actual,street_lenders,Норасмий шахслардан (кўчада),Street/informal lender,5
+credit_source_actual,family_friends,Оила аъзолари/дўстлар/танишлардан,Family/friends,6
+credit_source_actual,other,Бошқа манбадан,Other,7
+borrow_motivation,crisis_necessity,Оғир вазиятдан чиқиш учун (зарурат),Crisis/necessity,1
+borrow_motivation,improve_lifestyle,Ҳаёт тарзимни янада яхшилаш учун,Improve lifestyle,2
+loan_purpose,daily_expenses,Кундалик харажатларни қоплаш,Daily expenses,1
+loan_purpose,healthcare,Соғлиқни сақлаш харажатлари,Healthcare,2
+loan_purpose,appliances,Маиший техника/уй жиҳозлари,Appliances/furniture,3
+loan_purpose,auto,Автомобил (транспорт воситалари),Auto/vehicle,4
+loan_purpose,education,Таълим харажатлари,Education,5
+loan_purpose,wedding,Тўй ёки оилавий маросим,Wedding/ceremony,6
+loan_purpose,mortgage,Уй-жойга эга бўлиш (ипотека),Mortgage/housing,7
+loan_purpose,renovation,Уй-жойни таъмирлаш,Home renovation,8
+loan_purpose,debt_repayment,Бошқа қарзларни тўлаш,Debt repayment,9
+loan_purpose,migration_work,Ишлаш учун четга кетиш харажатлари,Labour migration expenses,10
+loan_purpose,business,Бизнесни бошлаш ёки кенгайтириш,Business start/expansion,11
+loan_purpose,family_entrepreneurship,Оилавий тадбиркорликни юритиш,Family entrepreneurship,12
+loan_purpose,help_relatives,Қариндошларим/яқинларимга ёрдам бериш,Help relatives,13
+loan_purpose,other,Бошқа,Other,14
+family_biz_reason,business_idea,Бизнес ғоямни амалга ошириш учун,To pursue a business idea,1
+family_biz_reason,lower_interest,Фоизлари нисбатан паст бўлган,Lower interest rate,2
+family_biz_reason,inspired_by_others,Яқинларимнинг муваффақиятли тажрибасини кўриб,Inspired by others' success,3
+family_biz_reason,social_pressure,Босим ва таъсир остида олдим,Took under social pressure,4
+family_biz_reason,trusted_advice,Бировнинг маслаҳатига ишониб,Trusted someone's advice,5
+family_biz_reason,other,Бошқа,Other,6
+family_biz_npl_reason,income_below_expectations,Даромадлар кутилганидан паст бўлган,Income was lower than expected,1
+family_biz_npl_reason,business_failed,Бизнес юрмаган (ташқи омиллар/тажриба/билим),Business failed (external factors/lack of experience),2
+family_biz_npl_reason,believed_state_loan_forgiven,Давлат кредитини қайтариш керак эмас деган фикр,Believed state loan did not need repayment,3
+family_biz_npl_reason,diverted_to_consumption,Пулларни бизнесга эмас истеъмолга йўналтирилган,Funds diverted to consumption,4
+family_biz_npl_reason,misunderstood_terms,Кредит шартлари нотўғри талқин қилинган,Misunderstood loan terms,5
+family_biz_npl_reason,other,Бошқа,Other,6
+family_biz_support,business_training,Бизнес кўникмалари бўйича ўқув/тренинглар,Business skills training,1
+family_biz_support,flexible_schedule,Тўлов муддатларини мослашувчан қилиш,Flexible repayment schedule,2
+family_biz_support,staged_disbursement,Кредитни босқичма-босқич ажратиш,Staged disbursement,3
+family_biz_support,business_plan_help,Бизнес режа тайёрлашда ёрдам,Business plan assistance,4
+family_biz_support,strengthen_oversight,Назоратни кучайтириш,Strengthen oversight,5
+family_biz_support,cash_and_card,Нақд пул ва пластик карта кўринишида бериш,Provide in cash and card,6
+family_biz_support,other,Бошқа,Other,7
+loan_used_as_intended,yes,Ҳа,Yes,1
+loan_used_as_intended,no,Йўқ (бошқа мақсадда),No (diverted),2
+loan_used_as_intended,hard_to_say,Жавоб беришга қийналаман,Hard to say,3
+loan_channel,online,Онлайн,Online,1
+loan_channel,offline,Офлайн (борган ҳолда),Offline (in-person),2
+loan_decision_factor,necessity,Зарурият туфайли,Necessity,1
+loan_decision_factor,incentive_available,Имтиёз мавжудлиги учун,Incentive/subsidy available,2
+loan_decision_factor,recommendation,Танишлар тавсиясига кўра,On recommendation of acquaintances,3
+loan_decision_factor,government_recommendation,Ҳокимият/давлат ташкилотлари тавсияси,Government/authority recommendation,4
+loan_decision_factor,fraud,Алданиб қолиб олганман,Taken under deception/fraud,5
+loan_decision_factor,build_credit_history,Кредит тарихим яхшиланади деб,To build credit history,6
+loan_decision_factor,inflation_fear,Инфляциядан хавотир,Fear of inflation,7
+loan_decision_factor,other,Бошқа,Other,8
+peers_repay_behavior,on_time,Вақтида тўлашяпти,Paying on time,1
+peers_repay_behavior,some_delays,Озгина кечикиш ҳолатлари бор,Some delays,2
+peers_repay_behavior,serious_problems,Вақтида тўлашда жиддий муаммолар,Serious repayment problems,3
+peers_repay_behavior,hard_to_say,Жавоб беришга қийналаман,Hard to say,4
+justified_nonpayment,salary_delay,Иш жойида ойликни кечиктирилиши,Salary delay at work,1
+justified_nonpayment,straw_borrower_not_my_debt,Танишлар менинг номимга олиб тўламаса мен тўлашим шарт эмас,Straw borrower — not my obligation,2
+justified_nonpayment,fraud_in_my_name,Фирибгарлар томонидан номимга кредит расмийлаштирилган,Fraud registered in my name,3
+justified_nonpayment,income_loss,Даромад йўқолиши (ишдан бўшаш/бизнес юрмай қолиши),Income loss,4
+justified_nonpayment,legal_dispute,Ҳуқуқий низолар пайдо бўлганда,Legal disputes,5
+justified_nonpayment,unexpected_expenses,Кутилмаган бошқа харажатлар,Unexpected expenses,6
+justified_nonpayment,other_debts,Бошқа қарзлар туфайли,Due to other debts,7
+justified_nonpayment,forgot,Эсдан чиқиб қолиши,Simply forgot,8
+justified_nonpayment,not_necessary_to_repay,Қайтариш шарт эмас,Not necessary to repay,9
+justified_nonpayment,other,Бошқа,Other,10
+notify_matrix_row,guarantor,Кафилни,Guarantor,1
+notify_matrix_row,spouse,Турмуш ўртоғини,Spouse,2
+notify_matrix_row,parents,Ота-онасини,Parents,3
+notify_matrix_row,adult_children,Вояга етган фарзандини,Adult children,4
+notify_matrix_row,other_family,Бошқа оила аъзоларини,Other family members,5
+notify_matrix_row,employer_coworker,Иш берувчи ёки бирга ишловчи ходимни,Employer or coworker,6
+notify_matrix_row,close_friend,Яқин дўстини,Close friend,7
+notify_matrix_col,appropriate,Мақсадга мувофиқ,Appropriate,1
+notify_matrix_col,not_appropriate,Мақсадга мувофиқ эмас,Not appropriate,2
+contract_read,yes_fully,Ҳа/тўлиқ танишганман,Yes/fully read,1
+contract_read,yes_partially,Ҳа/қисман танишганман,Yes/partially read,2
+contract_read,no,Танишмаганман,Did not read,3
+terms_understood,yes,Ҳа,Yes/understood,1
+terms_understood,thought_so_but_paid_more,Тушунганман деб ўйладим/аммо кўпроқ тўлашга тўғри келди,Thought so but paid more,2
+terms_understood,no,Тушунмаганман,Did not understand,3
+bank_explained_terms,yes_fully,Ҳа/тўлиқ маълумот беришган,Yes/fully explained,1
+bank_explained_terms,partially,Қисман маълумот беришган,Partially explained,2
+bank_explained_terms,no,Йўқ/умуман маълумот беришмаган,Not explained,3
+repayment_difficulty_reason,income_decreased,Даромадларим камайди,Income decreased,1
+repayment_difficulty_reason,salary_delayed,Иш ҳақи кечиктирилди,Salary was delayed,2
+repayment_difficulty_reason,diverted_to_other_debt,Бошқа қарзларга йўналтирилди,Diverted to other debt,3
+repayment_difficulty_reason,seasonal_income,Даромадларим мавсумий/доимий эмас,Seasonal/irregular income,4
+repayment_difficulty_reason,overestimated_repayment_ability,Кредит олишда имкониятларимни нотўғри баҳоладим,Overestimated repayment ability,5
+repayment_difficulty_reason,social_norm_not_paying,Бошқалар ҳам тўламаслигини кўриб мен ҳам шу қарорга келдим,Social norm: others not paying,6
+repayment_difficulty_reason,no_consequences_belief,Кредит тўламасам ҳеч қандай салбий оқибатлари йўқ деб ўйлагандим,Believed no consequences for non-payment,7
+repayment_difficulty_reason,pay_when_able_belief,Имкониятим бўлгандагина тўлашим керак деб ўйлагандим,Believed should pay only when able,8
+repayment_difficulty_reason,unexpected_expenses,Кутилмаган харажатлар чиқиб қолди,Unexpected expenses,9
+repayment_difficulty_reason,bank_error,Тўловларни амалга оширишда банк томонидан хатолик,Bank processing error,10
+repayment_difficulty_reason,hidden_contract_conditions,Банк шартномасида яширин шартлар бўлган,Hidden contract conditions,11
+repayment_difficulty_reason,fraud_registered_in_name,Номимга рухсатимсиз кредит расмийлаштирилди,Fraud: credit registered in name without consent,12
+repayment_difficulty_reason,unfair_pricing,Кредитга сотилган товар бозордан икки баробар қиммат,Unfair pricing (product sold at 2x market price),13
+repayment_difficulty_reason,no_credit_ever,Менинг умуман кредитим бўлмаган,Never had credit,14
+repayment_difficulty_reason,always_pay_on_time,Ҳар доим тўловни ўз вақтида амалга ошираман,Always pay on time,15
+repayment_difficulty_reason,hard_to_say,Жавоб беришга қийналаман,Hard to say,16
+repayment_difficulty_reason,other,Бошқа,Other,17
+acceptable_delay_days,none,Ҳеч қандай кечикиш мумкин эмас,No delay acceptable,1
+acceptable_delay_days,1to7,1–7 кун,1–7 days,2
+acceptable_delay_days,8to30,8–30 кун,8–30 days,3
+acceptable_delay_days,gt30,30 кундан ортиқ,More than 30 days,4
+acceptable_delay_days,no_need_to_pay,Тўламаса ҳам бўлади,No need to pay at all,5
+repayment_priority,banks,Банк ташкилотлари,Bank loans,1
+repayment_priority,family_friends,Яқинлардан олинган қарз,Family/friends debt,2
+repayment_priority,street_lenders,Норасмий шахслар (кўчада),Street lenders,3
+repayment_priority,formal_installment,Расмий насия бўйича қарзлар,Formal installment,4
+repayment_priority,informal_installment,Норасмий насия бўйича қарзлар,Informal installment,5
+repayment_priority,mfi,Микромолия ташкилотлари,MFI loans,6
+used_straw_borrower,yes,Ҳа,Yes,1
+used_straw_borrower,no,Йўқ,No,2
+used_straw_borrower,hard_to_remember,Жавоб бериш қийин/Эслолмайман,Hard to remember,3
+reminders_per_month,none,Юборилмаган,None sent,1
+reminders_per_month,1to2,1–2 марта,1–2 times,2
+reminders_per_month,3to5,3–5 марта,3–5 times,3
+reminders_per_month,gt5,5 мартадан ортиқ,More than 5 times,4
+collection_methods_received,sms,SMS орқали эслатмалар,SMS reminders,1
+collection_methods_received,calls,Телефон орқали қўнғироқлар,Phone calls,2
+collection_methods_received,bank_visit,Банк ходимининг уйга/ишга келиши,Bank officer home/work visit,3
+collection_methods_received,mib_officer_visit,МИБ ходимининг уйга/ишга келиши,Ministry of Internal Affairs officer visit,4
+collection_methods_received,guarantor_contact,Кафил билан боғланиш,Contact with guarantor,5
+collection_methods_received,official_warning_letter,Расмий огоҳлантириш хати юбориш,Official warning letter,6
+collection_methods_received,court_proceedings,Суд жараёни,Court proceedings,7
+collection_methods_received,collateral_action,Гаров бўйича чоралар,Collateral measures,8
+collection_methods_received,none,Умуман қўлланилмаган,None applied,9
+effective_reminder_method,sms,SMS орқали эслатмалар,SMS reminders,1
+effective_reminder_method,calls,Телефон орқали қўнғироқлар,Phone calls,2
+effective_reminder_method,app_notification,Банк иловаси орқали эслатмалар,Bank app notifications,3
+effective_reminder_method,messenger_telegram_whatsapp,Мессенжерлар (Telegram/WhatsApp),Messenger apps,4
+effective_reminder_method,in_person,Шахсан (юзма-юз) тушунтириш,In-person explanation,5
+effective_reminder_method,no_effect,Эслатмаларнинг самараси йўқ,No effect,6
+effective_reminder_method,other,Бошқа,Other,7
+credit_score_motivates,yes_strongly,Ҳа/кучли рағбатлантиради,Yes/strongly motivates,1
+credit_score_motivates,yes_partly,Ҳа/қисман рағбатлантиради,Yes/partly motivates,2
+credit_score_motivates,uncertain,Иккиланаман,Uncertain,3
+credit_score_motivates,no,Йўқ,No,4
+credit_score_motivates,not_aware_of_credit_score,Кредит рейтинги ҳақида маълумотга эга эмасман,Not aware of credit score,5
+knows_delay_effect,yes_clearly,Ҳа/аниқ биламан,Yes/clearly know,1
+knows_delay_effect,partly,Қисман биламан,Know partly,2
+knows_delay_effect,no,Йўқ/билмайман,Do not know,3
+knows_delay_effect,hard_to_say,Жавоб бериш қийин,Hard to say,4
+loan_regret,yes,Ҳа,Yes,1
+loan_regret,no,Йўқ,No,2
+credit_formality,formal_bank,Расмий банк (тижорат банки),Formal bank only,1
+credit_formality,formal_other,Бошқа расмий манба (МФО/насия/ломбард),Other formal source,2
+credit_formality,informal,Норасмий манба (оила/дўстлар/кўча),Informal source,3
+credit_formality,mixed,Аралаш (расмий + норасмий),Mixed formal and informal,4

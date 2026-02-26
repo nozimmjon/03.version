@@ -41,7 +41,7 @@ save_chart <- function(plot, name, w = 10, h = 6) {
 # 1. Regional distribution
 chart1 <- df |>
   count(region, has_loan, name = "n") |>
-  mutate(status = if_else(has_loan == 1, "Qarzdorlar", "Qarzdor emaslar")) |>
+  mutate(status = if_else(has_loan == 1, "Кредити мавжудлар", "Кредитга эга бўлмаганлар")) |>
   ggplot(aes(x = n, y = fct_reorder(region, n, .fun = sum), fill = status)) +
   geom_col(position = "stack") +
   geom_text(
@@ -51,7 +51,7 @@ chart1 <- df |>
     size = 3.2
   ) +
   scale_fill_manual(values = cols[1:2]) +
-  labs(title = "Regional distribution of respondents", subtitle = "Borrowers vs. non-borrowers", x = "Number of respondents", y = NULL, fill = NULL) +
+  labs(title = "Респондентларнинг ҳудудий тақсимланиши", x = "Респондентлар сони", y = NULL, fill = NULL) +
   coord_cartesian(clip = "off")
 save_chart(chart1, "chart_01_regional_distribution_ggplot2.png", 12, 7)
 
@@ -60,7 +60,7 @@ age_labels <- c("18-25", "26-35", "36-45", "46-55", "56+")
 chart2_data <- df |>
   mutate(
     age_group = cut(.data[[age_col]], breaks = c(0, 25, 35, 45, 55, Inf), labels = age_labels, right = TRUE),
-    status = if_else(has_loan == 1, "Qarzdorlar", "Qarzdor emaslar")
+    status = if_else(has_loan == 1, "Кредити мавжудлар", "Кредитга эга бўлмаганлар")
   ) |>
   count(age_group, status, name = "n")
 
@@ -74,7 +74,7 @@ save_chart(chart2, "chart_02_age_distribution_ggplot2.png", 10, 6)
 
 # 3. Gender composition
 chart3_data <- df |>
-  mutate(gender = .data[[gender_col]], status = if_else(has_loan == 1, "Qarzdorlar", "Qarzdor emaslar")) |>
+  mutate(gender = .data[[gender_col]], status = if_else(has_loan == 1, "Кредити мавжудлар", "Кредитга эга бўлмаганлар")) |>
   filter(!is.na(gender), gender != "") |>
   count(status, gender, name = "n") |>
   group_by(status) |>
@@ -92,7 +92,7 @@ save_chart(chart3, "chart_03_gender_ggplot2.png", 9, 6)
 # 4. Income distribution
 income_order <- c("5 млн сўмгача", "5-10 млн сўм", "10 - 20 млн сўм", "20-50 млн сўм", "50 млн сўмдан юқори")
 chart4_data <- df |>
-  mutate(income = factor(.data[[income_col]], levels = income_order), status = if_else(has_loan == 1, "Qarzdorlar", "Qarzdor emaslar")) |>
+  mutate(income = factor(.data[[income_col]], levels = income_order), status = if_else(has_loan == 1, "Кредити мавжудлар", "Кредитга эга бўлмаганлар")) |>
   filter(!is.na(income)) |>
   count(status, income, name = "n") |>
   group_by(status) |>
@@ -141,7 +141,7 @@ save_chart(chart6, "chart_06_repayment_status_ggplot2.png", 12, 6)
 income_sources <- names(df)[str_detect(names(df), fixed("1.9. Сиз асосан нималардан доимий даромад топасиз?/") )]
 
 chart7_data <- df |>
-  mutate(status = if_else(has_loan == 1, "Qarzdorlar", "Qarzdor emaslar")) |>
+  mutate(status = if_else(has_loan == 1, "Кредити мавжудлар", "Кредитга эга бўлмаганлар")) |>
   select(status, all_of(income_sources)) |>
   pivot_longer(-status, names_to = "source", values_to = "value") |>
   mutate(value = as.numeric(value), source = str_remove(source, "^1\\.9\\. Сиз асосан нималардан доимий даромад топасиз\\?/")) |>
@@ -158,7 +158,7 @@ save_chart(chart7, "chart_07_income_sources_ggplot2.png", 12, 7)
 
 # 8. Education
 chart8_data <- df |>
-  mutate(education = .data[[edu_col]], status = if_else(has_loan == 1, "Qarzdorlar", "Qarzdor emaslar")) |>
+  mutate(education = .data[[edu_col]], status = if_else(has_loan == 1, "Кредити мавжудлар", "Кредитга эга бўлмаганлар")) |>
   filter(!is.na(education), education != "") |>
   count(status, education, name = "n") |>
   group_by(status) |>
