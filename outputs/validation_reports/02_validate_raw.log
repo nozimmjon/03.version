@@ -1,0 +1,7 @@
+Phase 02 raw validation started: 2026-02-26 18:13:13
+Project root: D:/old/Desktop/Cerr_old/Cerr/2025/58. Марказий банк тадқиқоти/умумий репорт/replication/03.version
+
+Loaded codebook rows: 98
+Loading raw input from RDS: data/intermediate/01_raw.rds
+Raw rows: 2131 | Raw columns: 245
+Missing expected codebook vars in raw: 23
