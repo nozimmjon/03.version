@@ -1,0 +1,20 @@
+project:
+  name: uzb-credit-survey-r-rebuild
+  seed: 20260217
+
+paths:
+  raw_data_xlsx: dataset17022026.xlsx
+  output_dir: R/rebuild/outputs
+
+contract:
+  required_columns:
+    - has_loan
+  has_loan_values:
+    - 0
+    - 1
+
+exports:
+  cleaned_master_csv: survey_master_cleaned.csv
+  borrowers_csv: borrowers_clean.csv
+  nonborrowers_csv: nonborrowers_clean.csv
+  run_manifest_csv: run_manifest.csv
