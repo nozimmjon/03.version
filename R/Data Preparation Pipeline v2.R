@@ -311,7 +311,10 @@ if (length(non_numeric_slash) > 0) {
 # STEP 5: BUILD BORROWER FLAG FROM Q2.4
 # Prefer dummy approach; fallback to parsing main text if needed
 # -----------------------------
+
 q24_dummies <- names(df)[str_starts(names(df), paste0(Q24_MAIN, "/"))]
+
+q24_dummies <- names(df)[str_starts(names(df), fixed(paste0(Q24_MAIN, "?/")))]
 
 parse_yes_no <- function(x) {
   if (is.na(x)) return(NA_integer_)
