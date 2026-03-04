@@ -578,7 +578,7 @@ fl_comp_cols <- c("fl_contract_read", "fl_terms_understood",
 if ("contract_read" %in% names(df)) {
   df <- df %>%
     mutate(fl_contract_read = as.integer(
-      !is.na(contract_read) & contract_read == "Ҳа, тўлиқ танишганман"
+      !is.na(contract_read) & contract_read %in% c("Ҳа, тўлиқ танишганман", "Ҳа, қисман танишганман")
     ))
 }
 if ("terms_understood" %in% names(df)) {

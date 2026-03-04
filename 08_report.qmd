@@ -1,0 +1,660 @@
+---
+title: "Behavioural Analysis of Credit Borrowers in Uzbekistan"
+subtitle: "Evidence from a Nationwide Household Survey — Central Bank of Uzbekistan, 2025"
+author: "Research Department"
+date: today
+date-format: "MMMM D, YYYY"
+format:
+  docx:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    fig-width: 6.5
+    fig-height: 4.2
+    fig-dpi: 150
+    fig-align: center
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(dplyr)
+library(tidyr)
+library(flextable)
+library(scales)
+library(knitr)
+library(stringr)
+
+# ── Load master analytical dataset ──────────────────────────
+df        <- readRDS("data/intermediate/04_analytical.rds")
+borrowers <- df %>% filter(has_loan == 1)
+npl_only  <- borrowers %>% filter(is_npl == 1)
+fam       <- borrowers %>% filter(!is.na(family_biz_admin) & family_biz_admin == 1L)
+
+# ── Key scalars used inline throughout ─────────────────────
+N_total    <- nrow(df)
+N_borrow   <- nrow(borrowers)
+N_nonborrow <- nrow(df) - N_borrow
+pct_borrow  <- round(100 * N_borrow / N_total, 1)
+N_npl       <- nrow(npl_only)
+pct_npl     <- round(100 * N_npl / N_borrow, 1)
+N_fam       <- nrow(fam)
+N_regions   <- n_distinct(df$region)
+
+# ── flextable defaults ──────────────────────────────────────
+set_flextable_defaults(
+  font.family  = "Calibri",
+  font.size    = 10,
+  padding      = 4,
+  border.color = "#AAAAAA"
+)
+
+# Helper: auto-formatted flextable
+auto_ft <- function(dat, caption = NULL) {
+  ft <- flextable(dat) %>%
+    autofit() %>%
+    theme_vanilla() %>%
+    bold(part = "header") %>%
+    bg(part = "header", bg = "#1F497D") %>%
+    color(part = "header", color = "white")
+  if (!is.null(caption)) ft <- set_caption(ft, caption)
+  ft
+}
+
+fig <- function(name, h = 4.2) {
+  knitr::include_graphics(
+    file.path("outputs/figures", paste0(name, ".png"))
+  )
+}
+```
+
+\newpage
+
+# Executive Summary
+
+This report presents findings from a nationwide survey of **`r N_total` respondents** across **`r N_regions` regions** of Uzbekistan, conducted in 2025 on behalf of the Central Bank of Uzbekistan. The study examines credit behaviour, repayment culture, financial literacy, and the drivers of non-performing loans (NPL) among both borrowers and non-borrowers.
+
+**Key findings:**
+
+-   **`r pct_borrow`%** of respondents currently hold at least one active credit obligation (`r N_borrow` persons). The remaining `r N_nonborrow` respondents have no current credit.
+-   **`r pct_npl`%** of borrowers (`r N_npl` persons) are classified as NPL — delayed by more than 3 months or in default.
+-   Commercial banks are the preferred first-choice credit source, yet a substantial share of respondents—particularly those with lower incomes—rely on informal lenders due to speed, flexibility, and the absence of income requirements.
+-   **Income decline** and **salary delays** are the most frequently cited self-reported causes of NPL, while behavioural factors (belief that state loans need not be repaid; social norms of non-payment) affect a meaningful minority.
+-   A logistic regression model identifies **debt service ratio (DSR)**, **income volatility**, and **low financial literacy** as the strongest predictors of NPL status.
+-   **Family entrepreneurship credits** (`r N_fam` borrowers) exhibit a distinct risk profile: higher NPL rates driven by business failure and diversion of loan proceeds to consumption.
+-   SMS reminders and phone calls remain the most widely received—and most effective—collection channels.
+
+\newpage
+
+# Introduction & Methodology
+
+## Study Background
+
+Persistent non-performing loans represent one of the central challenges for the Uzbek banking sector. While macroeconomic data reveal the scale of the problem, they offer limited insight into the *behavioural* mechanisms driving default: how borrowers make credit decisions, whether they understand the terms of their contracts, how they prioritise repayment obligations, and what social norms shape their attitudes toward debt.
+
+This study was commissioned to fill that gap. By combining administrative credit-file data with structured survey responses, it provides a micro-level view of borrower behaviour across the full repayment spectrum—from timely payers to chronic defaulters.
+
+## Survey Design & Sample
+
+The survey was administered face-to-face by trained interviewers using a CAPI (Computer-Assisted Personal Interview) instrument. Respondents were drawn from three sampling frames:
+
+| Frame           | Description                                    |
+|-----------------|------------------------------------------------|
+| Primary list    | Bank-provided list of 1,500 active borrowers   |
+| Reserve list    | Back-up borrowers for non-response replacement |
+| Additional list | Extension sample for regional coverage         |
+
+After removing incomplete interviews and applying quality filters, the analytical sample comprises **`r N_total` respondents** from **`r N_regions` regions**, including urban and rural districts across all major provinces and the Republic of Karakalpakstan.
+
+## Data Processing Pipeline
+
+The analysis follows a fully reproducible R pipeline:
+
+| Script | Purpose | Output |
+|----|----|----|
+| `01_raw.R` | Load raw CSVs, fix encoding, standardise column names | `01_raw.rds` |
+| `02_codebook.R` | Parse question metadata, build label lookup | `02_codebook.rds` |
+| `03_clean.R` | Type-cast variables; parse multi-select dummies; apply `matrix_to01()` for binary matrices and `q23_to_mln()` for ordinal loan-amount ranges | `03_clean.rds` |
+| `04_analytical.R` | Engineer derived variables (NPL flags, DSR midpoints, financial literacy score, winsorised vars) | `04_analytical.rds` |
+| `05_export.R` | Export to CSV and Excel for secondary use | `data/exports/` |
+| `06_analyse.R` | Compute summary statistics and cross-tabulations | `outputs/tables/` |
+| `07_visualise.R` | Generate all 38 ggplot2 charts | `outputs/figures/` |
+| `08_report.qmd` | Render this document | `outputs/reports/` |
+
+\newpage
+
+# Sample Demographics
+
+## Geographic Distribution
+
+```{r fig-regional, fig.cap="Regional distribution of survey respondents by borrower status"}
+fig("chart_01_regional_distribution", h = 5)
+```
+
+The survey achieves broad regional coverage. Larger provinces (Fergana Valley, Tashkent region) naturally contribute more respondents given their population size. The share of borrowers within each region is broadly stable, suggesting that the sampling strategy did not systematically oversample any particular credit segment.
+
+## Age & Gender Profile
+
+```{r fig-age, fig.cap="Age-group distribution by borrower status (%)"}
+fig("chart_02_age_distribution")
+```
+
+The working-age cohorts (26–45) account for the largest share of borrowers, consistent with the life-cycle hypothesis of credit demand. Younger respondents (18–25) are underrepresented among borrowers, partly reflecting lower incomes and limited credit history.
+
+```{r fig-gender, fig.cap="Gender composition by borrower status (%)"}
+fig("chart_03_gender")
+```
+
+Male respondents are more likely to hold active credit, though the gender gap narrows considerably among non-NPL borrowers. Female borrowers tend to cluster in on-time repayment, possibly reflecting self-selection into smaller, lower-risk loans.
+
+## Household Income
+
+```{r fig-income, fig.cap="Household income category by borrower status (%)"}
+fig("chart_04_income")
+```
+
+Borrowers are concentrated in the mid-income brackets (5–50 million UZS per month). Very low-income households appear more frequently among non-borrowers, consistent with credit rationing at the lower end of the income distribution. High-income households show a smaller borrower share, possibly reflecting greater reliance on own savings.
+
+## Income Sources
+
+```{r fig-income-sources, fig.cap="Reported income sources by borrower status (%)"}
+fig("chart_07_income_sources")
+```
+
+Salary income is the dominant source for both groups, but self-employment and seasonal income are notably more prevalent among borrowers—particularly NPL borrowers. Seasonal income earners face a structural mismatch between irregular cash flows and fixed monthly repayment schedules, a pattern that emerges as a significant NPL risk factor in Section 7.
+
+## Educational Attainment
+
+```{r fig-education, fig.cap="Education level by borrower status (%)"}
+fig("chart_08_education")
+```
+
+Borrowers skew toward secondary-specialised and higher education. Respondents with only basic schooling are more likely to be non-borrowers, possibly due to lower formal employment rates and income levels.
+
+\newpage
+
+# Credit Market Participation
+
+## Credit Type Distribution
+
+```{r fig-ctype, fig.cap="Credit type distribution among borrowers (n and %)"}
+fig("chart_05_credit_type")
+```
+
+Consumer credit (istе'mol krediti) dominates the borrower portfolio, reflecting the broad rollout of government-subsidised retail loan programmes. Mortgage and auto loans account for meaningful shares. Micro-credit (mikroqarz) and family entrepreneurship credits (oilaviy) together represent a distinct behavioural segment examined in detail in Section 9.
+
+## Repayment Status
+
+```{r fig-repstatus, fig.cap="Borrowers by repayment status (n and %)"}
+fig("chart_06_repayment_status")
+```
+
+```{r repay-table}
+rep_tbl <- borrowers %>%
+  filter(!is.na(repay_group)) %>%
+  count(repay_group) %>%
+  mutate(
+    `Share (%)` = round(100 * n / sum(n), 1),
+    repay_group  = as.character(repay_group)
+  ) %>%
+  rename(`Repayment Group` = repay_group, `Count` = n)
+
+auto_ft(rep_tbl, "Borrowers by repayment group")
+```
+
+The `r pct_npl`% NPL rate in the sample is elevated relative to the national headline figure, which is by design: the sampling frame over-represents borrowers with delayed repayments to provide adequate statistical power for NPL analysis. Results should be interpreted in this context and not generalised as population prevalence estimates.
+
+## Actual Credit Sources Used
+
+```{r fig-actual-sources, fig.cap="Actual credit sources used by borrowers (%)"}
+fig("chart_13_actual_credit_sources")
+```
+
+Commercial banks are the dominant source of active credit. However, a non-trivial share of borrowers simultaneously hold obligations from informal sources (family/friends, street lenders), creating complex multi-creditor situations explored in Section 10.
+
+\newpage
+
+# Credit Decision-Making Behaviour
+
+## First-Choice Credit Source Preferences
+
+```{r fig-primary-source, fig.cap="Preferred first-choice credit source (all respondents)"}
+fig("chart_09_primary_credit_source")
+```
+
+When asked where they would turn first for credit, respondents show a clear preference hierarchy: commercial banks first, followed by family and friends, then formal installment services. Street lenders and pawnshops are selected by only a small minority as a first choice—but as shown in Section 3.2, their *actual* use is higher, suggesting they serve as last-resort or supplementary sources.
+
+## Why Choose Informal Credit?
+
+```{r fig-inf-reasons, fig.cap="Reasons for preferring informal credit sources (n, all respondents)"}
+fig("chart_10_informal_reasons")
+```
+
+Speed and ease of access dominate the rationale for informal borrowing, followed by the absence of income documentation requirements. Religious (interest-free) considerations are cited by a meaningful minority. These demand-side preferences point toward specific policy responses: streamlining formal credit applications and expanding Sharia-compliant products could reduce informal market reliance.
+
+## Why Choose Commercial Banks?
+
+```{r fig-bank-reasons, fig.cap="Reasons for preferring commercial banks (n)"}
+fig("chart_11_bank_reasons")
+```
+
+Among bank-preferrers, the legal clarity of formal contracts and the long-term availability of funds are the most cited advantages, followed by credit history building. Online convenience is valued but ranks lower than structural factors—suggesting digital channel improvements alone will not drive adoption without addressing fundamental cost and access barriers.
+
+## Barriers to Borrowing (Non-Borrowers)
+
+```{r fig-nocredit, fig.cap="Reasons for not having active credit — non-borrowers (n and %)"}
+fig("chart_12_no_credit_reasons", h = 5)
+```
+
+Voluntary non-borrowers are not a homogeneous group. The dominant barriers are debt-trap fear and institutional distrust, followed by income instability. A significant share report having sufficient savings—indicating financially resilient voluntary abstainers. Religious reasons and family opposition each affect a meaningful minority, suggesting that supply-side expansion alone is insufficient to increase financial inclusion.
+
+## Loan Purposes
+
+```{r fig-purposes, fig.cap="Loan purposes reported by borrowers (%)"}
+fig("chart_14_loan_purposes", h = 5)
+```
+
+```{r fig-purpose-status, fig.cap="Key loan purposes by repayment status (%)"}
+fig("chart_15_purpose_by_status")
+```
+
+Consumer and household appliance purposes dominate. Critically, debt-consolidation borrowing (taking a loan to repay another debt) and wedding/ceremony financing are both elevated among NPL borrowers relative to on-time payers—consistent with the hypothesis that these loan uses generate cash flows insufficient to service the debt.
+
+## Factors Influencing the Borrowing Decision
+
+```{r fig-decision, fig.cap="Factors that influenced the decision to take credit (%)"}
+fig("chart_16_decision_factors")
+```
+
+*Necessity* is overwhelmingly the primary driver — most borrowers did not perceive a genuine choice. The presence of available incentives (subsidised rates, government programmes) is the second most common factor. Fraud and misrepresentation, while a minority experience, are non-negligible and warrant consumer protection attention.
+
+\newpage
+
+# Financial Health Indicators
+
+## Debt Service Ratio
+
+```{r fig-dsr, fig.cap="Debt service ratio (DSR) category by repayment status (%)"}
+fig("chart_17_dti_by_status")
+```
+
+NPL borrowers are significantly more concentrated in the high-DSR brackets (\>35%). On-time payers cluster below 20%, consistent with prudential lending norms. The association between high DSR and default is one of the strongest predictors in the logistic model (Section 7).
+
+## Income Volatility
+
+```{r fig-vol, fig.cap="Income variability by repayment status (%)"}
+fig("chart_18_volatility_by_status")
+```
+
+Nearly half of NPL borrowers report highly variable or seasonal income, compared to a substantially lower share among on-time payers. This mismatch between irregular income and fixed repayment schedules is a systemic vulnerability that neither borrowers nor lenders appear to adequately price at origination.
+
+\newpage
+
+# Financial Literacy & Contract Awareness
+
+## Contract Reading Behaviour
+
+```{r fig-contract, fig.cap="Extent of contract review before signing, by repayment status (%)"}
+fig("chart_20_contract_by_status")
+```
+
+```{r fig-online-contract, fig.cap="Contract review: online vs. offline borrowers (%)"}
+fig("chart_23_online_vs_offline")
+```
+
+A significant share of borrowers—especially NPL borrowers—report not having read their credit agreement in full. Online borrowers show lower rates of full contract review than their offline counterparts, despite (or perhaps because of) the faster, more automated nature of digital loan origination. This has direct implications for disclosure requirements in digital lending channels.
+
+## Understanding of Credit Terms
+
+```{r fig-terms, fig.cap="Self-reported understanding of credit terms, by repayment status (%)"}
+fig("chart_21_terms_by_status")
+```
+
+A notable fraction of borrowers report that they *thought* they understood the terms but ended up paying more than expected—a pattern disproportionately represented among NPL borrowers. This suggests that subjective confidence in understanding does not reliably predict actual comprehension, pointing toward the need for standardised key-facts statements and mandatory cooling-off periods.
+
+## Loan Regret
+
+```{r fig-regret, fig.cap="Share of borrowers who regret taking the loan, by repayment status (%)"}
+fig("chart_22_regret_by_status")
+```
+
+Loan regret is strikingly high among NPL borrowers, with the majority wishing they had not taken the credit. Among on-time payers, regret is far lower. This asymmetry confirms that NPL is not primarily a willingness-to-pay problem: most defaulters *wished* they could repay, suggesting ability-to-pay failures dominate.
+
+\newpage
+
+# NPL Risk Factor Analysis
+
+## Self-Reported Causes of Repayment Difficulty
+
+```{r fig-npl-reasons, fig.cap="Self-reported causes of repayment difficulty — NPL borrowers (n and %)"}
+fig("chart_19_npl_reasons", h = 5.5)
+```
+
+Income-side shocks (income decrease, salary delays, seasonal income) account for the majority of self-reported NPL causes. Behavioural and attitudinal factors — such as the belief that consequences are minimal, or that repayment can wait — are present in a meaningful minority and become important inputs to the behavioural risk model.
+
+## Logistic Regression Model of NPL Risk
+
+A binary logistic regression was estimated on the sample of borrowers with complete data on all predictor variables.
+
+**Dependent variable:** `is_npl` (1 = NPL, defined as \>3 months in arrears; 0 = on-time or \<3 months delayed)
+
+**Predictors:**
+
+```{r pred-table}
+pred_tbl <- tibble::tribble(
+  ~Variable,                   ~Type,        ~Description,
+  "Age (winsorised)",          "Continuous",  "Respondent age, trimmed at 5th/95th pct",
+  "Male",                      "Binary",      "1 = male respondent",
+  "Married",                   "Binary",      "1 = currently married",
+  "Higher education",          "Binary",      "1 = tertiary degree or above",
+  "Income (mln UZS)",          "Continuous",  "HH income midpoint, winsorised",
+  "DSR midpoint",              "Continuous",  "Debt-service ratio (0 = none, 0.6 = max)",
+  "Financial buffer (months)", "Continuous",  "Self-reported months of reserves",
+  "Income variability",        "Ordinal 1–3", "1 = stable, 3 = highly seasonal",
+  "Financial literacy score",  "Count 0–4",  "Sum of contract/terms awareness items",
+  "Employed (formal)",         "Binary",      "1 = formal sector employment",
+  "HH size (winsorised)",      "Continuous",  "Number of household members",
+  "Productive use",            "Binary",      "1 = loan used for productive purpose"
+)
+auto_ft(pred_tbl, "Logistic regression predictors")
+```
+
+```{r fig-logreg, fig.cap="Logistic regression coefficients (logit scale). Red = risk factor; green = protective factor. OR labels shown."}
+fig("chart_24_logistic_coef", h = 5.5)
+```
+
+```{r fig-or, fig.cap="Odds ratio forest plot with 95% confidence intervals"}
+fig("chart_31_odds_ratios", h = 5.5)
+```
+
+**Interpretation of key findings:**
+
+-   **Debt service ratio** carries the largest positive coefficient: each unit increase in DSR substantially raises the odds of NPL. This confirms that over-indebtedness at origination is the most powerful single risk factor.
+-   **Financial buffer months** shows a strong protective effect: even one additional month of reserves markedly reduces NPL odds, underscoring the value of emergency savings as a repayment cushion.
+-   **Income variability** increases NPL risk monotonically — respondents with seasonal or highly variable income face materially higher odds than those with stable incomes.
+-   **Financial literacy score** is protective: each additional point on the 0–4 scale reduces NPL probability, supporting the effectiveness of financial education interventions.
+-   **Productive use flag** (loan used as intended for an income-generating purpose) is associated with lower NPL odds, confirming that diversion of loan proceeds to consumption increases default risk.
+-   **Higher education** and **formal employment** are protective, primarily through their correlation with stable income and better loan management capacity.
+
+## Model Fit
+
+```{r fig-roc, fig.cap="ROC curve for the NPL logistic regression model"}
+fig("chart_32_roc_curve")
+```
+
+```{r model-fit-table}
+# Re-estimate model to extract fit stats inline
+vol_map <- c("Барқарор" = 1, "Бироз ўзгариб туради" = 2, "Жуда ўзгарувчан/мавсумий" = 3)
+
+model_df <- borrowers %>%
+  mutate(
+    is_male               = as.integer(gender == "Эркак"),
+    is_married            = as.integer(marital_status == "Турмуш қурган"),
+    has_higher_edu        = as.integer(as.character(education) == "Олий таълим"),
+    income_variability_num = vol_map[as.character(income_variability)]
+  ) %>%
+  select(is_npl, age_w, is_male, is_married, has_higher_edu,
+         income_midpoint_mln_uzs_w, dsr_midpoint, financial_buffer_months,
+         income_variability_num, fin_lit_score, employed_binary,
+         hh_size_w, productive_use_flag) %>%
+  drop_na()
+
+fit      <- glm(is_npl ~ ., data = model_df, family = binomial)
+acc_val  <- round(100 * mean(round(fitted(fit)) == model_df$is_npl), 1)
+mcf_r2   <- round(as.numeric(1 - logLik(fit) /
+              logLik(glm(is_npl ~ 1, data = model_df, family = binomial))), 3)
+n_model  <- nrow(model_df)
+
+fit_tbl <- tibble::tribble(
+  ~Metric,               ~Value,
+  "Sample (N)",          as.character(n_model),
+  "NPL rate in sample",  paste0(round(100 * mean(model_df$is_npl), 1), "%"),
+  "Classification accuracy", paste0(acc_val, "%"),
+  "McFadden R²",         as.character(mcf_r2),
+  "AIC",                 as.character(round(AIC(fit), 1))
+)
+auto_ft(fit_tbl, "Logistic model fit statistics")
+```
+
+The model achieves reasonable discrimination (AUC visible in the ROC chart above) with a McFadden R² of **`r mcf_r2`** and classification accuracy of **`r acc_val`%**. Given the well-documented difficulty of predicting individual default from survey data, these figures indicate that the chosen predictors carry meaningful signal and that the model is suitable for guiding policy targeting.
+
+\newpage
+
+# Debt Collection & Reminders
+
+## Collection Methods Received
+
+```{r fig-coll, fig.cap="Collection methods received by repayment status — NPL vs. on-time borrowers (%)"}
+fig("chart_25_collection_by_status")
+```
+
+NPL borrowers report receiving a substantially broader range of collection interventions than on-time payers. SMS and phone calls are nearly universal. Personal visits (by bank staff or enforcement officers) and guarantor contact are used heavily for NPL cases, consistent with escalating-intensity collection ladders. Court proceedings and collateral actions, while low in absolute terms, are notably more prevalent in the NPL group — reflecting the final stages of the collection process.
+
+## Effective Reminder Channels
+
+```{r fig-eff, fig.cap="Perceived effectiveness of reminder methods (%)"}
+fig("chart_26_effective_reminders")
+```
+
+SMS is rated the most effective reminder channel, followed by phone calls and Telegram/WhatsApp messages. In-person contact by bank staff is effective but resource-intensive. Guarantor calls are used and perceived as effective, raising consumer-protection questions about third-party contact practices. A non-trivial share of borrowers report that *no* reminder method prompts timely payment — a segment for which collection-ladder escalation or restructuring may be more appropriate than communication frequency.
+
+\newpage
+
+# Family Entrepreneurship Credits
+
+Family entrepreneurship credits represent a government programme aimed at promoting household-level business activity. This section analyses the **`r N_fam` borrowers** in this category.
+
+## Motivations for Taking Family Credit
+
+```{r fig-fbiz-why, fig.cap="Reasons for taking a family entrepreneurship credit (%)"}
+fig("chart_30_why_family_credit")
+```
+
+The majority of family credit borrowers report a genuine business motivation (implementing a business idea, attracted by favourable rates). However, social pressure and acting on advice — rather than independent business analysis — account for a significant share, which may partly explain the elevated default rates in this segment.
+
+## NPL Rate by Credit Type
+
+```{r fig-npl-type, fig.cap="NPL rate by credit type (%, borrowers with n ≥ 5)"}
+fig("chart_29_npl_by_credit_type")
+```
+
+Family entrepreneurship credits exhibit among the highest NPL rates across credit types. This is consistent with the nature of the product: business income is inherently more volatile than salary income, and many borrowers lack the entrepreneurial experience to sustain loan repayments through the business establishment phase.
+
+## NPL Causes in Family Credits
+
+```{r fig-fam-npl, fig.cap="Self-reported NPL causes among family credit borrowers (n and %)"}
+fig("chart_27_family_npl_reasons")
+```
+
+Three causes stand out: income below expectations, outright business failure, and the belief that government-originated loans do not require repayment. The latter is a particularly notable behavioural finding: a segment of borrowers appear to conflate the government's role as lender with a de facto forgiveness expectation — a moral hazard that undermines repayment culture and warrants explicit public communication to correct.
+
+## Recommended Support Measures
+
+```{r fig-fam-supp, fig.cap="Support measures borrowers believe would help with family credits (%)"}
+fig("chart_28_family_support")
+```
+
+Business skills training and flexible repayment schedules are the top-requested support measures. Staged disbursement — releasing loan tranches tied to verifiable business milestones — is also strongly supported, and is the most effective supply-side lever for reducing loan diversion to consumption.
+
+\newpage
+
+# Attitudes, Social Norms & Repayment Culture
+
+## Peer Repayment Behaviour
+
+```{r fig-peers, fig.cap="Perception of peers' repayment behaviour (all respondents, %)"}
+fig("chart_38_peers_repay_perception")
+```
+
+The majority of respondents perceive their peers as repaying on time. However, a non-trivial share reports observing delays or difficulties in their social circles. Social norm theory suggests that perceived peer behaviour strongly influences individual repayment intentions: where default is seen as common, it becomes more socially acceptable. Communication campaigns that reinforce the *norm* of timely repayment — rather than focusing solely on consequences — may be more effective for this population.
+
+## Repayment Priority Ordering
+
+```{r fig-prio, fig.cap="Which creditor type is repaid first when resources are constrained (%)"}
+fig("chart_36_repayment_priority")
+```
+
+Commercial banks are prioritised by the largest share of multi-debtor borrowers. Informal creditors (family, friends) rank second, reflecting the social costs of defaulting on personal relationships. Formal installment services and MFIs are deprioritised. This hierarchy has implications for collection strategy: banks benefit from a natural priority advantage, but this may partly reflect the formal enforcement mechanisms available to them rather than genuine preference.
+
+## Tolerance for Payment Delays
+
+```{r fig-delay, fig.cap="Self-reported acceptable delay period (borrowers, %)"}
+fig("chart_37_acceptable_delay")
+```
+
+A significant minority of borrowers report tolerating delays of 8–30 days as acceptable — even among those currently repaying on time. This latent tolerance for delay is a leading indicator of future payment behaviour and suggests that reminder interventions in the 3–7 day pre-due-date window could prevent early drift into delinquency.
+
+## Knowledge of Delay Consequences
+
+```{r fig-knows, fig.cap="Knowledge that payment delays harm credit history, by repayment status (%)"}
+fig("chart_35_knows_delay_effect")
+```
+
+A meaningful share of borrowers — including some currently paying on time — are unaware that payment delays damage their credit history. NPL borrowers show lower awareness on average, though the direction of causality is unclear (ignorance may contribute to NPL, but NPL experience may also reveal this information). In either case, disclosure at the point of origination is insufficiently effective at conveying this consequence.
+
+## Credit Rating as Motivator
+
+```{r fig-crscore, fig.cap="Does credit rating awareness motivate timely repayment? (borrowers, %)"}
+fig("chart_34_credit_score_motivates")
+```
+
+Among respondents aware of the credit rating system, the majority acknowledge it as a motivator for timely repayment. However, a substantial share either report no motivating effect or are entirely unaware of their credit score — a missed leverage point that could be activated through proactive credit-score communication from lenders.
+
+## Financial Literacy Score Distribution
+
+```{r fig-finlit, fig.cap="Financial literacy score (0–4) by repayment status (%)"}
+fig("chart_33_finlit_by_status")
+```
+
+The financial literacy score — constructed from four survey items covering contract reading, terms understanding, delay-consequences awareness, and credit history knowledge — is inversely associated with NPL status. NPL borrowers cluster at scores of 0–1, while on-time payers are more concentrated at 3–4. This gradient supports the causal mechanism identified in the regression model.
+
+\newpage
+
+# Conclusions & Policy Recommendations
+
+## Summary of Evidence
+
+This study delivers three headline findings:
+
+1.  **NPL is predominantly an ability-to-pay problem.** Income shocks, high DSR, and seasonal income volatility are the dominant drivers of default. Moral-hazard attitudes (willingness-based non-payment) explain a secondary but non-negligible share, concentrated in family entrepreneurship credits.
+
+2.  **Financial literacy and contract comprehension are material risk factors.** Borrowers who read their contracts fully, understand their terms, and are aware of credit-history consequences are significantly less likely to default—even after controlling for income and employment.
+
+3.  **Informal credit market participation reflects unmet formal-market demand.** Speed, flexibility, and absence of documentation requirements drive informal borrowing—gaps the formal sector can reduce through targeted product design and streamlined application processes.
+
+## Policy Recommendations
+
+```{r rec-table}
+rec_tbl <- tibble::tribble(
+  ~`#`, ~Area,                          ~Recommendation,                                                                  ~Priority,
+  "1",  "Responsible Lending",          "Mandate DTI/DSR checks at origination; cap credit to borrowers above 35% DSR",  "High",
+  "2",  "Disclosure & Literacy",        "Require standardised Key Facts Statements (1 page) at point of sale",            "High",
+  "3",  "Digital Lending",             "Enforce mandatory review period (24 hrs) before disbursement for online loans",   "High",
+  "4",  "Family Credits",              "Introduce staged disbursement tied to business milestones",                        "High",
+  "5",  "Family Credits",              "Bundle mandatory pre-loan business training with credit approval",                 "Medium",
+  "6",  "Collection",                  "Adopt digital-first reminder protocols (SMS + Telegram) in pre-delinquency window","Medium",
+  "7",  "Credit Culture",              "Public campaign reinforcing repayment norms; correct 'state loans are forgiven' belief", "Medium",
+  "8",  "Informal Sector",             "Fast-track micro-loan application process to compete with informal speed advantage", "Medium",
+  "9",  "Islamic Finance",             "Expand Sharia-compliant product offerings to capture religious segment",           "Low",
+  "10", "Credit Score Activation",     "Proactive credit-score reporting to borrowers at each payment cycle",              "Low"
+)
+auto_ft(rec_tbl, "Summary of policy recommendations")
+```
+
+\newpage
+
+# Appendix
+
+## A. Sample Composition by Region
+
+```{r app-region-table}
+reg_tbl <- df %>%
+  group_by(region) %>%
+  summarise(
+    `Total respondents` = n(),
+    `Borrowers`         = sum(has_loan),
+    `Borrower share (%)`= round(100 * mean(has_loan), 1),
+    `NPL among borrowers (%)` = round(100 * mean(is_npl[has_loan == 1], na.rm = TRUE), 1),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(`Total respondents`)) %>%
+  rename(Region = region)
+
+auto_ft(reg_tbl, "Sample composition by region")
+```
+
+## B. Logistic Regression — Full Coefficient Table
+
+```{r app-reg-table}
+if (requireNamespace("broom", quietly = TRUE)) {
+  var_rename <- c(
+    age_w                     = "Age (winsorised)",
+    is_male                   = "Male",
+    is_married                = "Married",
+    has_higher_edu            = "Higher education",
+    income_midpoint_mln_uzs_w = "Income (mln UZS)",
+    dsr_midpoint              = "DSR midpoint",
+    financial_buffer_months   = "Financial buffer (months)",
+    income_variability_num    = "Income variability (1–3)",
+    fin_lit_score             = "Financial literacy score",
+    employed_binary           = "Formally employed",
+    hh_size_w                 = "Household size",
+    productive_use_flag       = "Productive use"
+  )
+
+  coef_tbl <- broom::tidy(fit, conf.int = TRUE, exponentiate = FALSE) %>%
+    filter(term != "(Intercept)") %>%
+    mutate(
+      Variable       = dplyr::recode(term, !!!var_rename),
+      Coefficient    = round(estimate, 3),
+      `Std. Error`   = round(std.error, 3),
+      `z-value`      = round(statistic, 2),
+      `p-value`      = ifelse(p.value < 0.001, "<0.001", round(p.value, 3)),
+      OR             = round(exp(estimate), 3),
+      `95% CI (OR)`  = sprintf("[%.3f, %.3f]", exp(conf.low), exp(conf.high))
+    ) %>%
+    select(Variable, Coefficient, `Std. Error`, `z-value`, `p-value`, OR, `95% CI (OR)`)
+
+  auto_ft(coef_tbl, "Full logistic regression results (dependent variable: is_npl)")
+}
+```
+
+## C. Variable Definitions
+
+```{r app-vardef}
+vardef_tbl <- tibble::tribble(
+  ~Variable,               ~Definition,                                              ~Source,
+  "has_loan",              "=1 if respondent holds ≥1 active credit",               "Derived",
+  "is_npl",                "=1 if repayment delay >3 months or in default",          "Administrative",
+  "is_delayed",            "=1 if any repayment delay (1 day or more)",              "Administrative",
+  "dsr_midpoint",          "Midpoint of DSR category bracket",                       "Derived from Q",
+  "income_midpoint_mln_uzs_w","Midpoint of HH income bracket, winsorised",          "Derived from Q",
+  "financial_buffer_months","Midpoint of financial buffer months bracket",           "Derived from Q",
+  "fin_lit_score",         "Sum of 4 financial literacy items (0–4)",                "Derived",
+  "productive_use_flag",   "=1 if loan used as intended for productive purpose",     "Derived",
+  "multi_debt_flag",       "=1 if borrower holds obligations from ≥2 sources",       "Derived",
+  "moral_hazard_flag",     "=1 if respondent endorses justified non-payment norms",  "Derived",
+  "compound_vulnerability","=1 if high DSR + seasonal income + low fin. literacy",   "Derived"
+)
+auto_ft(vardef_tbl, "Analytical variable definitions")
+```
+
+## D. Rendering Instructions
+
+To reproduce this report, ensure Quarto is installed and the full pipeline has been run:
+
+``` bash
+# From the project root (03.version/)
+Rscript R/01_raw.R
+Rscript R/02_codebook.R
+Rscript R/03_clean.R
+Rscript R/04_analytical.R
+Rscript R/05_export.R
+Rscript R/06_analyse.R
+Rscript R/07_visualise.R
+quarto render 08_report.qmd
+```
+
+Required R packages: `dplyr`, `tidyr`, `flextable`, `scales`, `knitr`, `stringr`, `broom` (optional, for Appendix B).

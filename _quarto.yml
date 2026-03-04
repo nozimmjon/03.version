@@ -1,0 +1,20 @@
+project:
+  type: default
+  output-dir: outputs/reports
+
+format:
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    fig-width: 6.5
+    fig-height: 4.2
+    fig-dpi: 150
+    fig-align: center
+    reference-doc: "null"        # no branded template — uses Quarto default
+
+execute:
+  echo: false
+  warning: false
+  message: false
+  freeze: false

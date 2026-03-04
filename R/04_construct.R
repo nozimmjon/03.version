@@ -387,18 +387,20 @@ stopifnot("has_loan" %in% names(df))
 
 borrowers     <- df %>% filter(has_loan == 1L)
 non_borrowers <- df %>% filter(has_loan == 0L)
+family_biz <- borrowers %>% filter(!is.na(family_biz_admin) & family_biz_admin == 1L)
 
-# Family-business credit sub-sample (admin flag preferred; self-report fallback)
-if ("family_biz_admin" %in% names(df)) {
-  family_biz <- borrowers %>% filter(!is.na(family_biz_admin) & family_biz_admin == 1L)
-} else if ("loan_purpose__family_entrepreneurship" %in% names(df)) {
-  family_biz <- borrowers %>%
-    filter(!is.na(loan_purpose__family_entrepreneurship) &
-             loan_purpose__family_entrepreneurship == 1L)
-} else {
-  family_biz <- borrowers[0, ]   # empty with same schema
-  cat("  NOTE: family_biz subset empty — no family biz flag or loan_purpose dummy found\n")
-}
+# 
+# # Family-business credit sub-sample (admin flag preferred; self-report fallback)
+# if ("family_biz_admin" %in% names(df)) {
+#   family_biz <- borrowers %>% filter(!is.na(family_biz_admin) & family_biz_admin == 1L)
+# } else if ("loan_purpose__family_entrepreneurship" %in% names(df)) {
+#   family_biz <- borrowers %>%
+#     filter(!is.na(loan_purpose__family_entrepreneurship) &
+#              loan_purpose__family_entrepreneurship == 1L)
+# } else {
+#   family_biz <- borrowers[0, ]   # empty with same schema
+#   cat("  NOTE: family_biz subset empty — no family biz flag or loan_purpose dummy found\n")
+# }
 
 cat(sprintf("  Full dataset  : %d rows\n",  nrow(df)))
 cat(sprintf("  Borrowers     : %d rows\n",  nrow(borrowers)))

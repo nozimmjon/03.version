@@ -322,8 +322,8 @@ inf_labels <- c(
 names(inf_labels) <- inf_cols
 
 inf_n <- nrow(df %>% filter(!is.na(credit_source_primary) &
-                               str_detect(credit_source_primary,
-                                          regex("оила|дўст|нотаниш|кўча|норасмий", ignore_case = TRUE))))
+                              str_detect(credit_source_primary,
+                                         regex("оила|дўст|нотаниш|кўча|норасмий", ignore_case = TRUE))))
 inf_n <- max(inf_n, 1L)
 
 inf_sum <- df %>%
@@ -786,7 +786,7 @@ fit <- glm(is_npl ~ ., data = model_df, family = binomial)
 
 acc_val    <- 100 * mean(round(fitted(fit)) == model_df$is_npl)
 mcf_r2     <- as.numeric(1 - logLik(fit) /
-                logLik(glm(is_npl ~ 1, data = model_df, family = binomial)))
+                           logLik(glm(is_npl ~ 1, data = model_df, family = binomial)))
 
 var_rename <- c(
   age_w                     = "Ёш",
@@ -814,8 +814,8 @@ if (HAS_BROOM) {
       var_label = recode(term, !!!var_rename), 
       var_label = reorder(var_label, estimate)
     )
-    
-
+  
+  
   # Chart 24: Logistic coefficients (horizontal bar)
   ggplot(coef_df, aes(x = estimate, y = var_label, fill = direction)) +
     geom_col() +
@@ -836,7 +836,7 @@ if (HAS_BROOM) {
     ) +
     theme_cbuz()
   save_fig("chart_24_logistic_coef", h = 7)
-
+  
   # Chart 31: Odds ratio forest plot
   ggplot(coef_df, aes(x = OR, y = var_label, colour = direction)) +
     geom_point(size = 4) +
@@ -848,7 +848,7 @@ if (HAS_BROOM) {
          x = "Odds Ratio", y = NULL) +
     theme_cbuz()
   save_fig("chart_31_odds_ratios", h = 7)
-
+  
 } else {
   message("  [SKIP charts 24 & 31] Install 'broom' package: install.packages('broom')")
 }
@@ -1338,7 +1338,7 @@ if (length(q23_cols) >= 8) {
         TRUE                                                ~ "Норасмий"
       )
     )
-
+  
   ggplot(q23_means,
          aes(x = mean_mln, y = source, fill = source_type)) +
     geom_col() +
@@ -1364,7 +1364,7 @@ if (length(q23_cols) >= 8) {
     theme_cbuz() +
     theme(legend.position = "right")
   save_fig("chart_40_q23_loan_size_by_source", h = 5.5)
-
+  
 } else {
   message("  [SKIP chart 40] Expected 8 Q2.3 columns, found: ",
           length(q23_cols))
