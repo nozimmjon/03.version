@@ -69,6 +69,11 @@ theme_cbuz <- function(base_size = 15) {
       plot.background  = element_rect(fill = "white", colour = NA)
     )
 }
+
+
+wrap_axis <- function(width = 20) {
+  scale_x_discrete(labels = \(x) stringr::str_wrap(x, width))
+}
 # Helper function — add near the top of your script, after theme_cbuz
 expand_palette <- function(palette, n) {
   colorRampPalette(RColorBrewer::brewer.pal(
@@ -108,10 +113,23 @@ reg_sum <- df %>%
     region = fct_reorder(str_wrap(region, 25), total)
   )
 
+reg_total <- reg_sum %>%
+  distinct(region, total)
+
 ggplot(reg_sum, aes(x = n, y = region, fill = status)) +
   geom_col(position = "stack") +
-  geom_text(aes(label = sprintf("%.1f%%", pct)),
+  geom_text(aes(label = sprintf("%.1f%%", pct)
+                ),
             position = position_stack(vjust = 0.5), size = 3.5) +
+  # total per region
+  geom_text(
+    data = reg_total,
+    aes(x = total, y = region, label = paste0("N=", total)),
+    inherit.aes = FALSE,
+    hjust = -0.1,
+    size = 2.9,
+    fontface = "bold"
+  ) +
   scale_fill_manual(values = c(
     "Қарздорлар"      = COL_BORROW,
     "Қарз олмаганлар" = COL_NOBORROW)) +
@@ -217,7 +235,7 @@ rep_sum <- borrowers %>%
 ggplot(rep_sum, aes(x = repay_group, y = n, fill = repay_group)) +
   geom_col(show.legend = FALSE) +
   geom_text(aes(label = sprintf("n=%d\n%.1f%%", n, pct)),
-            vjust = -0.4, size = 4) +
+            vjust = -0.4, size = 6) +
   scale_fill_manual(values = PALETTE3) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
   labs(title = "Қарзга эга респондентларнинг тўлов ҳолати бўйича тақсимоти",
@@ -305,15 +323,17 @@ src_pref <- df %>%
   mutate(
     pct   = 100 * n / sum(n),
     label = fct_reorder(str_wrap(credit_source_primary, 32), n)
-  )
+  ) %>% 
+  filter(credit_source_primary != "Бошқа манбаларга (кўрсатинг)")
 
-ggplot(src_pref, aes(x = n, y = label, fill = label)) +
+ggplot(src_pref, aes(x = pct, y = label, fill = label)) +
   geom_col(show.legend = FALSE) +
   geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
   scale_fill_manual(values = colorRampPalette(RColorBrewer::brewer.pal(12, "Set3"))(nrow(src_pref)))+
-  labs(title = "3-расм. Биринчи навбатда мурожаат қилинадиган қарз манбаси",
-       x = "Сон", y = NULL) +
+  labs(title = str_wrap("3-расм. Зарур бўлганда биринчи навбатда мурожаат қилинадиган қарз манбаси",
+                        width = 45),
+       x = "Фоиз", y = NULL) +
   theme_cbuz()
 save_fig("chart_09_primary_credit_source")
 
@@ -384,13 +404,13 @@ bank_sum <- df %>%
     label = fct_reorder(label, n)
   )
 
-ggplot(bank_sum, aes(x = n, y = label, fill = label)) +
+ggplot(bank_sum, aes(x = pct, y = label, fill = label)) +
   geom_col(show.legend = FALSE) +
-  geom_text(aes(label = sprintf("n=%d (%.1f%%)", n, pct)), hjust = -0.1, size = 4) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.30))) +
   scale_fill_brewer(palette = "Set3") +
   labs(title = "4-расм. Тижорат банкига мурожаат қилиш сабаблари",
-       x = "Сон", y = NULL) +
+       x = "Фоиз", y = NULL) +
   theme_cbuz()
 save_fig("chart_11_bank_reasons")
 
@@ -594,10 +614,12 @@ ggplot(dsr_sum, aes(x = dsr_cat, y = pct, fill = repay_group)) +
             position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
   scale_fill_manual(values = PALETTE3) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = "17-расм. Қарздорларнинг тўлов ҳолатига қараб қарз тўловларининг оилавий даромадга нисбати кўрсаткичи",
+  labs(title = str_wrap("19-расм. Қарздорларнинг тўлов ҳолатига қараб қарз тўловларига йўналтирлаётган оилавий даромад қисми",
+                        width = 45),
        x = "Қарзга йўналтирилаётган миқдор", y = "%") +
   theme_cbuz() +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))+
+  wrap_axis()
 save_fig("chart_17_dti_by_status")
 
 # ── Chart 18: Income volatility by repayment status ──────────
@@ -612,16 +634,19 @@ vol_sum <- borrowers %>%
   group_by(repay_group) %>%
   mutate(pct = 100 * n / sum(n))
 
+
+
 ggplot(vol_sum, aes(x = income_variability, y = pct, fill = repay_group)) +
   geom_col(position = "dodge") +
   geom_text(aes(label = sprintf("%.1f%%", pct)),
             position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
   scale_fill_manual(values = PALETTE3) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = "18-расм. Қарздорларнинг тўлов ҳолатига қараб даромад барқарорлиги",
+  labs(title = "17-расм. Қарздорларнинг тўлов ҳолатига қараб даромад барқарорлиги",
        x = NULL, y = "%") +
   theme_cbuz() +
-  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))+
+  wrap_axis(20)
 save_fig("chart_18_volatility_by_status")
 
 # ── Chart 19: NPL reasons (top, horizontal bar) ──────────────
@@ -669,12 +694,14 @@ ggplot(npl_reason_sum, aes(x = n, y = label, fill = pct)) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.32))) +
   scale_fill_gradient(low = "#fee5d9", high = "#de2d26", guide = "none") +
   labs(
-    title    = "16-расм. Кредитни муддати ўтган қарздорликка айланиш сабаблари",
+    title = str_wrap("16-расм. Кредитни муддати ўтган қарздорликка айланиш сабаблари",
+                        width = 45), 
     subtitle = sprintf("NPL қарздорлар сони N= %d", N_npl),
-    x = "NPL қарздорлар сони", y = NULL
+    x = NULL, y = NULL
   ) +
   theme_cbuz()
 save_fig("chart_19_npl_reasons", h = 7)
+
 
 cat("\n[Charts 1-19 complete]\n")
 
@@ -697,11 +724,13 @@ ggplot(contr_sum, aes(x = contract_read, y = pct, fill = repay_group)) +
             position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
   scale_fill_manual(values = PALETTE3) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = "17-расм. Қарздорлар тўлов ҳолатига қараб шартнома билан танишиш даражаси",
+  labs(title = str_wrap("21-расм. Қарз бўйича тўловлар ҳолатига қараб шартнома билан танишиш даражаси",
+                        width = 45),
        x = NULL, y = "%") +
   theme_cbuz() +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 save_fig("chart_20_contract_by_status")
+
 
 # ── Chart 21: Terms understood by repayment status ───────────
 terms_sum <- borrowers %>%
@@ -717,10 +746,12 @@ ggplot(terms_sum, aes(x = terms_understood, y = pct, fill = repay_group)) +
             position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
   scale_fill_manual(values = PALETTE3) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = "19-расм. Қарздорлар тўлов ҳолатига кўра кредит шартларини тушуниш даражаси",
+  labs(title = str_wrap("23-расм. Қарз бўйича тўлов ҳолатига кўра кредит шартларини тушуниш даражаси",
+                        width = 45),
        x = NULL, y = "%") +
   theme_cbuz() +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))+
+  wrap_axis()
 save_fig("chart_21_terms_by_status")
 
 # ── Chart 22: Credit regret by repayment status ───────────────
@@ -758,7 +789,7 @@ ggplot(online_contr, aes(x = contract_read, y = pct, fill = loan_channel)) +
             position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
   scale_fill_brewer(palette = "Set1") +
   scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = "18-расм. Шартнома билан танишиш: Онлайн vs Офлайн",
+  labs(title = "22-расм. Шартнома билан танишиш ҳолати (Онлайн vs Офлайн)",
        x = NULL, y = "%") +
   theme_cbuz() +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
@@ -907,7 +938,7 @@ coll_cols <- c(
 )
 coll_labels <- c(
   "SMS", "Қўнғироқ", "Банк ходими ташрифи", "МИБ ходими ташрифи",
-  "Кафил билан боғланиш", "Расмий огоҳлантирма",
+  "Кафил билан боғланиш", "Расмий огоҳлантириш",
   "Суд жараёни", "Гаров чоралари"
 )
 names(coll_labels) <- coll_cols
@@ -929,7 +960,8 @@ ggplot(coll_sum, aes(x = pct, y = label, fill = repay_group)) +
             position = position_dodge(width = 0.9), hjust = -0.1, size = 3.5) +
   scale_fill_manual(values = PALETTE3[c("On-time", "NPL (3+ months)")]) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
-  labs(title = "24-расм. Қарздорлар тўлов ҳолатига кўра ундириш учун қўлланилган чоралар",
+  labs(title = str_wrap("28-расм. Қарздорлар тўлов ҳолатига кўра ундириш учун қўлланилган чоралар",
+                        width = 45),
        x = "%", y = NULL) +
   theme_cbuz()
 save_fig("chart_25_collection_by_status")
@@ -947,7 +979,7 @@ eff_cols <- c(
 )
 eff_labels <- c(
   "SMS", "Қўнғироқ", "Банк иловаси", "Telegram/WhatsApp",
-  "Кафил қўнғироғи", "Шахсий учрашув", "Бошқа", "Самарасиз"
+  "Кафил қўнғироғи", "Юзма-юз учрашув", "Бошқа", "Самарасиз"
 )
 names(eff_labels) <- eff_cols
 
@@ -964,7 +996,8 @@ ggplot(eff_sum, aes(x = pct, y = label, fill = pct)) +
   geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.5) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
   scale_fill_distiller(palette = "Blues", direction = 1) +
-  labs(title = "23-расм. Кредитни ўз вақтида тўлаш бўйича эслатмаларнинг энг самарали воситаси",
+  labs(title = str_wrap("27-расм. Кредитни ўз вақтида тўлаш бўйича эслатмаларнинг энг самарали воситаси",
+                        width = 45),
        x = "%", y = NULL) +
   theme_cbuz()
 save_fig("chart_26_effective_reminders")
@@ -1003,16 +1036,16 @@ fnpl_sum <- fam %>%
     label = fct_reorder(label, n)
   )
 
-ggplot(fnpl_sum, aes(x = n, y = label, fill = pct)) +
+ggplot(fnpl_sum, aes(x = pct, y = label, fill = pct)) +
   geom_col(show.legend = FALSE) +
-  geom_text(aes(label = sprintf("n=%d (%.1f%%)", n, pct)),
+  geom_text(aes(label = sprintf("%.1f%%", pct)),
             hjust = -0.1, size = 3.5) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.32))) +
   scale_fill_gradient(low = "#fee5d9", high = "#de2d26") +
   labs(
-    title    = "26-расм. Оилавий тадбиркорлик кредитида NPL сабаблари",
-    subtitle = sprintf("Оилавий кредит олганлар N = %d", N_fam),
-    x = "Сон", y = NULL
+    title    = str_wrap("30-расм. Оилавий тадбиркорлик кредитида NPL сабаблари (Респондентлар фикрлари)",
+                        width = 45),
+    x = "Фоиз", y = NULL
   ) +
   theme_cbuz()
 save_fig("chart_27_family_npl_reasons")
@@ -1047,7 +1080,7 @@ ggplot(supp_sum, aes(x = pct, y = label, fill = label)) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
   scale_fill_manual(values = colorRampPalette(RColorBrewer::brewer.pal(8, "Set2"))(nrow(supp_sum)))+
   labs(
-    title    = "27-расм. Оилавий кредит олувчиларга зарур кўмак чоралари (%)",
+    title    = "31-расм. Оилавий кредит олувчиларга зарур кўмак чоралари (%)",
     subtitle = sprintf("N = %d", N_fam),
     x = "%", y = NULL
   ) +
@@ -1116,8 +1149,7 @@ ggplot(fbiz_sum, aes(x = pct, y = label, fill = label)) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
   scale_fill_manual(values = colorRampPalette(RColorBrewer::brewer.pal(12, "Set3"))(nrow(fbiz_sum)))+
   labs(
-    title    = "25-расм. Оилавий кредит олиш сабаблари (%)",
-    subtitle = sprintf("N = %d", N_fam),
+    title    = "29-расм. Нима учун оилавий кредит олинган?",
     x = "%", y = NULL
   ) +
   theme_cbuz()
@@ -1143,8 +1175,8 @@ ggplot(finlit_sum,
             position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
   scale_fill_manual(values = PALETTE3) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = "33-расм. Қарздорлар тўлов ҳолатига кўра молиявий саводхонлик даражаси",
-       x = "Молиявий саводхонлик бали (0–4гача)", y = "%") +
+  labs(title = "26-расм. Қарз бўйича тўлов ҳолатига кўра молиявий саводхонлик даражаси",
+       x = "Молиявий саводхонлик бали (0 дан – 4 гача)", y = "%") +
   theme_cbuz()
 save_fig("chart_33_finlit_by_status")
 
@@ -1155,15 +1187,16 @@ crsc_sum <- borrowers %>%
   mutate(
     pct   = 100 * n / sum(n),
     label = fct_reorder(str_wrap(as.character(credit_score_motivates), 32), n)
-  )
+  ) %>% 
+  filter(credit_score_motivates != "Иккиланаман")
 
-ggplot(crsc_sum, aes(x = n, y = label, fill = label)) +
+ggplot(crsc_sum, aes(x = pct, y = label, fill = label)) +
   geom_col(show.legend = FALSE) +
   geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
   scale_fill_brewer(palette = "RdYlGn", direction = -1) +
-  labs(title = "21-расм. Кредит рейтинги ўз вақтида тўлашга рағбатлантирадими?",
-       x = "Сон", y = NULL) +
+  labs(title = "25-расм. Кредит рейтинги ўз вақтида тўлашга рағбатлантирадими?",
+       x = "Фоиз", y = NULL) +
   theme_cbuz()
 save_fig("chart_34_credit_score_motivates")
 
@@ -1173,7 +1206,8 @@ knows_sum <- borrowers %>%
   group_by(repay_group, knows_delay_effect) %>%
   summarise(n = n(), .groups = "drop") %>%
   group_by(repay_group) %>%
-  mutate(pct = 100 * n / sum(n))
+  mutate(pct = 100 * n / sum(n)) %>% 
+  filter(knows_delay_effect != "Жавоб бериш қийин (ўқилмасин)")
 
 ggplot(knows_sum,
        aes(x = str_wrap(as.character(knows_delay_effect), 20),
@@ -1184,7 +1218,8 @@ ggplot(knows_sum,
   scale_fill_manual(values = PALETTE3) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
   labs(
-    title = "35-расм. Қарздорлар тўлов ҳолатига кўра кечикишнинг кредит тарихига таъсирини билиш даражаси",
+    title = str_wrap("24-расм. Қарздорлар тўлов ҳолатига кўра кечикишнинг кредит тарихига таъсирини билиш даражаси",
+                     width = 45),
     x = NULL, y = "%"
   ) +
   theme_cbuz() +
@@ -1239,7 +1274,9 @@ ggplot(delay_sum,
   labs(title = "14-расм. Респондентларнинг кредитларни кечиктириш ҳолатлари бўйича фикри",
        x = NULL, y = "%") +
   theme_cbuz() +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))+
+  wrap_axis()
+
 save_fig("chart_37_acceptable_delay")
 
 # ── Chart 38: Peers repayment behaviour perception ────────────
@@ -1413,7 +1450,7 @@ ggplot(buf_sum,
   scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
   scale_x_discrete(labels = function(x) str_wrap(x, 14)) +
   labs(
-    title    = "41-расм. Респондентларнинг молиявий буфер (жамғарма захираси) бўйича ҳолат",
+    title    = "18-расм. Респондентларнинг молиявий буфер (жамғарма захираси) бўйича ҳолат",
     subtitle = "Даромад тўхтаб қолса, неча ой давомида кредит (қарз) тўловларини амалга ошира оласиз?",
     x = NULL, y = "%"
   ) +
