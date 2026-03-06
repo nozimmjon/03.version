@@ -9,3 +9,9 @@ data/intermediate/*.rds
 
 /.quarto/
 **/*.quarto_ipynb
+
+
+
+r_libs/
+r_libs/
+r_libs/
