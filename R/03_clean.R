@@ -562,7 +562,8 @@ if ("acceptable_delay_days" %in% names(df)) {
 # 9.12  fin_lit_score: additive 0–4 from four financial-literacy components
 #   contract_read:
 #     "Ҳа, тўлиқ танишганман"                           = 1  (read fully)
-#     "Ҳа, қисман танишганман" / "Танишмаганман"        = 0
+#     "Ҳа, қисман танишганман"                         = 1  (read partially)
+#     "Танишмаганман"                                  = 0
 #   terms_understood:
 #     "Ҳа"                                              = 1  (understood)
 #     "Тушунганман деб ўйладим..." / "Тушунмаганман"    = 0

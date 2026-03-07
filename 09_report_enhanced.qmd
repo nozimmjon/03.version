@@ -505,11 +505,11 @@ Among respondents aware of the credit rating system, the majority acknowledge it
 
 ## Financial Literacy Score Distribution
 
-```{r fig-finlit, fig.cap="Financial literacy score (0–4) by repayment status (%)"}
-fig("chart_33_finlit_by_status")
+```{r fig-finlit, fig.cap="Financial literacy score (0–4) by repayment status (%). The index sums four binary items: contract read fully or partially, loan terms understood, awareness of the credit-rating system, and awareness that payment delays affect credit history; if any component is missing, the score is not calculated."}
+knitr::include_graphics("outputs/figures/final_uz/chart_33_finlit_by_status.png")
 ```
 
-The financial literacy score — constructed from four survey items covering contract reading, terms understanding, delay-consequences awareness, and credit history knowledge — is inversely associated with NPL status. NPL borrowers cluster at scores of 0–1, while on-time payers are more concentrated at 3–4. This gradient supports the causal mechanism identified in the regression model.
+The financial literacy score is an additive 0-4 index built from four binary indicators: whether the borrower read the contract fully or partially, whether they reported understanding the loan terms, whether they were at least aware of the credit-rating system, and whether they knew or partly knew that payment delays affect credit history. If any of the four components is missing, the score is not calculated. Descriptively, NPL borrowers are more concentrated at the lower end of the scale, while on-time borrowers are more concentrated at scores of 3-4. This pattern is consistent with, but does not by itself establish, the protective association reported in the econometric section.
 
 \newpage
 

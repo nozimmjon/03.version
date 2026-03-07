@@ -1,3 +1,7 @@
+local_lib <- file.path(getwd(), "r_libs")
+if (dir.exists(local_lib)) {
+  .libPaths(c(normalizePath(local_lib, winslash = "/", mustWork = FALSE), .libPaths()))
+}
 # ============================================================
 # 07_visualise.R  –  Consolidated ggplot2 visualisation
 #
@@ -5,7 +9,7 @@
 # claudecodes/ pipeline, using the clean 04_analytical.rds.
 #
 # Input : data/intermediate/04_analytical.rds
-# Output: outputs/figures/*.png
+# Output: outputs/figures/recheck_uz/*.png
 # ============================================================
 
 # ── 0. Setup ─────────────────────────────────────────────────
@@ -26,10 +30,18 @@ if (HAS_BROOM)    library(broom)
 if (HAS_PROC)     library(pROC)
 if (HAS_PATCH)    library(patchwork)
 
-df <- readRDS("data/intermediate/04_analytical.rds")
-dir.create("outputs/figures", recursive = TRUE, showWarnings = FALSE)
+df <- readRDS("data/intermediate/04_analytical.rds") %>%
+  mutate(
+    repay_group = recode(as.character(repay_group),
+      "On-time" = "Ўз вақтида",
+      "1-3 month delay" = "1-3 ой кечикиш",
+      "NPL (3+ months)" = "NPL (3+ ой)"
+    ),
+    repay_group = factor(repay_group, levels = c("Ўз вақтида", "1-3 ой кечикиш", "NPL (3+ ой)"), ordered = TRUE)
+  )
+dir.create("outputs/figures/recheck_uz", recursive = TRUE, showWarnings = FALSE)
 
-cat(sprintf("Data loaded: %d rows × %d cols\n", nrow(df), ncol(df)))
+cat(sprintf("Маълумот юкланди: %d қатор × %d устун\n", nrow(df), ncol(df)))
 
 # ── Colour palette & theme ───────────────────────────────────
 COL_ONTIME   <- "#2ca02c"
@@ -39,9 +51,9 @@ COL_BORROW   <- "#1f77b4"
 COL_NOBORROW <- "#aec7e8"
 
 PALETTE3 <- c(
-  "On-time"          = COL_ONTIME,
-  "1-3 month delay"  = COL_DELAY,
-  "NPL (3+ months)"  = COL_NPL
+  "Ўз вақтида"       = COL_ONTIME,
+  "1-3 ой кечикиш"   = COL_DELAY,
+  "NPL (3+ ой)"      = COL_NPL
 )
 
 # theme_cbuz <- function(base_size = 15) {
@@ -82,7 +94,7 @@ expand_palette <- function(palette, n) {
 }
 
 save_fig <- function(name, w = 10, h = 6) {
-  path <- file.path("outputs/figures", paste0(name, ".png"))
+  path <- file.path("outputs/figures/recheck_uz", paste0(name, ".png"))
   ggsave(path, width = w, height = h, dpi = 150, bg = "white")
   cat(sprintf("  [OK] %s.png\n", name))
 }
@@ -353,29 +365,27 @@ inf_labels <- c(
 )
 names(inf_labels) <- inf_cols
 
-inf_base <- df %>%
-  filter(!is.na(informal_reason))
+inf_n <- nrow(df %>% filter(!is.na(credit_source_primary) &
+                              str_detect(credit_source_primary,
+                                         regex("оила|дўст|нотаниш|кўча|норасмий", ignore_case = TRUE))))
+inf_n <- max(inf_n, 1L)
 
-inf_sum <- inf_base %>%
+inf_sum <- df %>%
   summarise(across(all_of(inf_cols), ~ sum(.x, na.rm = TRUE))) %>%
   pivot_longer(everything(), names_to = "reason", values_to = "n") %>%
   mutate(
-    pct   = 100 * n / nrow(inf_base),
+    pct   = 100 * n / nrow(df),
     label = inf_labels[reason],
     label = fct_reorder(label, n)
   )
 
-ggplot(inf_sum, aes(x = pct, y = label, fill = label)) +
+ggplot(inf_sum, aes(x = n, y = label, fill = label)) +
   geom_col(show.legend = FALSE) +
-  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
+  geom_text(aes(label = sprintf("n=%d (%.1f%%)", n, pct)), hjust = -0.1, size = 4) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.30))) +
   scale_fill_brewer(palette = "Set3") +
-  labs(
-    title = "5-расм. Норасмий манбага мурожаат қилиш сабаблари",
-    subtitle = sprintf("Фақат 2.2.а саволи берилган респондентлар, n=%d", nrow(inf_base)),
-    x = "Фоиз",
-    y = NULL
-  ) +
+  labs(title = "5-расм. Норасмий манбага мурожаат қилиш сабаблари",
+       x = "Сон", y = NULL) +
   theme_cbuz()
 save_fig("chart_10_informal_reasons")
 
@@ -397,14 +407,11 @@ bank_labels <- c(
 )
 names(bank_labels) <- bank_cols
 
-bank_base <- df %>%
-  filter(!is.na(credit_source_primary), credit_source_primary == "Банк ташкилотларига")
-
-bank_sum <- bank_base %>%
+bank_sum <- df %>%
   summarise(across(all_of(bank_cols), ~ sum(.x, na.rm = TRUE))) %>%
   pivot_longer(everything(), names_to = "reason", values_to = "n") %>%
   mutate(
-    pct   = 100 * n / nrow(bank_base),
+    pct   = 100 * n / nrow(df),
     label = bank_labels[reason],
     label = fct_reorder(label, n)
   )
@@ -414,12 +421,8 @@ ggplot(bank_sum, aes(x = pct, y = label, fill = label)) +
   geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.30))) +
   scale_fill_brewer(palette = "Set3") +
-  labs(
-    title = "4-расм. Тижорат банкига мурожаат қилиш сабаблари",
-    subtitle = sprintf("Фақат тижорат банкларини биринчи манба сифатида танлаган респондентлар, n=%d", nrow(bank_base)),
-    x = "Фоиз",
-    y = NULL
-  ) +
+  labs(title = "4-расм. Тижорат банкига мурожаат қилиш сабаблари",
+       x = "Фоиз", y = NULL) +
   theme_cbuz()
 save_fig("chart_11_bank_reasons")
 
@@ -896,8 +899,8 @@ if (HAS_BROOM) {
     geom_vline(xintercept = 1, linetype = "dashed", colour = "black") +
     scale_colour_manual(values = c("Риск омили" = COL_NPL,
                                    "Ҳимоя омили" = COL_ONTIME)) +
-    labs(title = "31-расм. NPL эҳтимолига таъсир: OR Forest Plot (95% CI)",
-         x = "Odds Ratio", y = NULL) +
+    labs(title = "31-расм. NPL эҳтимолига таъсир: имкониятлар нисбати графиги (95% ИО)",
+         x = "Имкониятлар нисбати", y = NULL) +
     theme_cbuz()
   save_fig("chart_31_odds_ratios", h = 7)
   
@@ -921,8 +924,8 @@ if (HAS_PROC) {
              label = sprintf("AUC = %.3f", auc_val),
              size = 5, colour = COL_BORROW) +
     labs(title = "ROC эгри чизиғи – NPL логистик модели",
-         x = "1 − Ўзига хослик (1 − Specificity)",
-         y = "Сезгирлик (Sensitivity)") +
+         x = "1 − ўзига хослик",
+         y = "Сезгирлик") +
     theme_cbuz()
   save_fig("chart_32_roc_curve")
 } else {
@@ -953,7 +956,7 @@ coll_labels <- c(
 names(coll_labels) <- coll_cols
 
 coll_sum <- borrowers %>%
-  filter(repay_group %in% c("On-time", "NPL (3+ months)")) %>%
+  filter(repay_group %in% c("Ўз вақтида", "NPL (3+ ой)")) %>%
   group_by(repay_group) %>%
   summarise(across(all_of(coll_cols), ~ 100 * mean(.x, na.rm = TRUE)),
             .groups = "drop") %>%
@@ -967,7 +970,7 @@ ggplot(coll_sum, aes(x = pct, y = label, fill = repay_group)) +
   geom_col(position = "dodge") +
   geom_text(aes(label = sprintf("%.1f%%", pct)),
             position = position_dodge(width = 0.9), hjust = -0.1, size = 3.5) +
-  scale_fill_manual(values = PALETTE3[c("On-time", "NPL (3+ months)")]) +
+  scale_fill_manual(values = PALETTE3[c("Ўз вақтида", "NPL (3+ ой)")]) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
   labs(title = str_wrap("28-расм. Қарздорлар тўлов ҳолатига кўра ундириш учун қўлланилган чоралар",
                         width = 45),
@@ -1321,18 +1324,20 @@ cat("\n--- Enrichment Charts (39-42) ---\n")
 # ── Chart 39: Informal credit preference by region ───────────
 # "Informal" = family/friends, street lenders, pawnshops,
 #              informal installment (anything non-bank/MFI/formal)
-informal_pat <- regex(
-  "оила|дўст|нотаниш|кўча|норасмий",
-  ignore_case = TRUE
+informal_sources <- c(
+  "Оила аъзолари, дўстлар ёки танишларга",
+  "Кўчада фоиз эвазига пул (қарз) берувчи норасмий шахсларга",
+  "Норасмий насия хизматига (бозорлар, дўконлар в.б.)",
+  "Ломбардларга"
 )
 
 reg_inf <- df %>%
   filter(!is.na(credit_source_primary), !is.na(region)) %>%
+  mutate(is_informal_first = credit_source_primary %in% informal_sources) %>%
   group_by(region) %>%
   summarise(
     n            = n(),
-    pct_informal = 100 * mean(
-      str_detect(credit_source_primary, informal_pat), na.rm = TRUE),
+    pct_informal = 100 * mean(is_informal_first, na.rm = TRUE),
     .groups = "drop"
   ) %>%
   mutate(
@@ -1477,8 +1482,8 @@ prod_npl <- borrowers %>%
   ) %>%
   mutate(
     label = ifelse(productive_use_flag == 1,
-                   "Мақсадли фойдаланиш\n(productive use)",
-                   "Мақсадсиз фойдаланиш\n(non-productive)"),
+                   "Мақсадли фойдаланиш",
+                   "Мақсадсиз фойдаланиш"),
     fill_col = ifelse(npl_rate > 52, COL_NPL, COL_DELAY)
   )
 
@@ -1504,8 +1509,8 @@ save_fig("chart_42_npl_by_productive_use")
 # ============================================================
 # Done
 # ============================================================
-n_saved <- length(list.files("outputs/figures", pattern = "\\.png$"))
-cat(sprintf("\n=== 07_visualise.R complete ===\n"))
-cat(sprintf("Charts saved to outputs/figures/  (%d PNG files total)\n", n_saved))
-cat(sprintf("  Charts 01–38 : core report blocks\n"))
-cat(sprintf("  Charts 39–42 : enrichment charts for Доклад_катта-32\n"))
+n_saved <- length(list.files("outputs/figures/recheck_uz", pattern = "\\.png$"))
+cat(sprintf("\n=== 14_visualize_report_recheck_uz.R complete ===\n"))
+cat(sprintf("Чизмалар outputs/figures/recheck_uz/ га сақланди  (%d PNG файл)\n", n_saved))
+cat(sprintf("  Чизмалар 01–38 : асосий репорт блоклари\n"))
+cat(sprintf("  Чизмалар 39–42 : қўшимча текширув чизмалари\n"))

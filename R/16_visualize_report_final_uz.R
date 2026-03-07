@@ -1,11 +1,19 @@
+local_lib <- file.path(getwd(), "r_libs")
+if (dir.exists(local_lib)) {
+  .libPaths(c(normalizePath(local_lib, winslash = "/", mustWork = FALSE), .libPaths()))
+}
 # ============================================================
-# 07_visualise.R  –  Consolidated ggplot2 visualisation
+# 16_visualize_report_final_uz.R
 #
-# Replicates all 38 charts previously produced by the Python
-# claudecodes/ pipeline, using the clean 04_analytical.rds.
+# Full Uzbek chart pack for publication review.
+# Based on the recheck script with:
+# - full chart coverage,
+# - figure numbering preserved in titles,
+# - targeted redesign/polish from the visual audit,
+# - AME-first econometric visuals from robust outputs.
 #
 # Input : data/intermediate/04_analytical.rds
-# Output: outputs/figures/*.png
+# Output: outputs/figures/final_uz/*.png
 # ============================================================
 
 # ── 0. Setup ─────────────────────────────────────────────────
@@ -18,18 +26,26 @@ suppressPackageStartupMessages({
   library(forcats)
 })
 
-HAS_BROOM    <- requireNamespace("broom",     quietly = TRUE)
-HAS_PROC     <- requireNamespace("pROC",      quietly = TRUE)
-HAS_PATCH    <- requireNamespace("patchwork", quietly = TRUE)
+HAS_BROOM <- requireNamespace("broom", quietly = TRUE)
+HAS_PROC  <- requireNamespace("pROC", quietly = TRUE)
+HAS_PATCH <- requireNamespace("patchwork", quietly = TRUE)
 
-if (HAS_BROOM)    library(broom)
-if (HAS_PROC)     library(pROC)
-if (HAS_PATCH)    library(patchwork)
+if (HAS_BROOM) library(broom)
+if (HAS_PROC) library(pROC)
+if (HAS_PATCH) library(patchwork)
 
-df <- readRDS("data/intermediate/04_analytical.rds")
-dir.create("outputs/figures", recursive = TRUE, showWarnings = FALSE)
+df <- readRDS("data/intermediate/04_analytical.rds") %>%
+  mutate(
+    repay_group = recode(as.character(repay_group),
+      "On-time" = "Ўз вақтида тўловчилар",
+      "1-3 month delay" = "1-3 ой кечикувчилар",
+      "NPL (3+ months)" = "NPL"
+    ),
+    repay_group = factor(repay_group, levels = c("Ўз вақтида тўловчилар", "1-3 ой кечикувчилар", "NPL"), ordered = TRUE)
+  )
+dir.create("outputs/figures/final_uz", recursive = TRUE, showWarnings = FALSE)
 
-cat(sprintf("Data loaded: %d rows × %d cols\n", nrow(df), ncol(df)))
+cat(sprintf("Маълумот юкланди: %d қатор × %d устун\n", nrow(df), ncol(df)))
 
 # ── Colour palette & theme ───────────────────────────────────
 COL_ONTIME   <- "#2ca02c"
@@ -39,42 +55,31 @@ COL_BORROW   <- "#1f77b4"
 COL_NOBORROW <- "#aec7e8"
 
 PALETTE3 <- c(
-  "On-time"          = COL_ONTIME,
-  "1-3 month delay"  = COL_DELAY,
-  "NPL (3+ months)"  = COL_NPL
+  "Ўз вақтида тўловчилар" = COL_ONTIME,
+  "1-3 ой кечикувчилар" = COL_DELAY,
+  "NPL" = COL_NPL
 )
-
-# theme_cbuz <- function(base_size = 15) {
-#   theme_minimal(base_size = base_size) +
-#     theme(
-#       plot.title       = element_text(face = "bold", size = rel(1.1)),
-#       plot.subtitle    = element_text(colour = "grey40", size = rel(0.9)),
-#       axis.title       = element_text(size = rel(0.9)),
-#       legend.position  = "bottom",
-#       legend.title     = element_blank(),
-#       panel.grid.minor = element_blank(),
-#       plot.background  = element_rect(fill = "white", colour = NA)
-#     )
-# }
 
 theme_cbuz <- function(base_size = 15) {
   theme_minimal(base_size = base_size) +
     theme(
-      plot.title       = element_text(face = "bold", size = rel(1.1), hjust = 0.5, lineheight = 1.1),
-      plot.subtitle    = element_text(colour = "grey40", size = rel(0.9)),
-      axis.title       = element_text(size = rel(0.9)),
-      legend.position  = "bottom",
-      legend.title     = element_blank(),
+      plot.title = element_text(face = "bold", size = rel(1.06), hjust = 0, lineheight = 1.05),
+      plot.subtitle = element_text(colour = "grey40", size = rel(0.9)),
+      plot.caption = element_text(colour = "grey40", hjust = 0),
+      axis.title = element_text(size = rel(0.9)),
+      axis.text = element_text(size = rel(0.9)),
+      legend.position = "bottom",
+      legend.title = element_blank(),
       panel.grid.minor = element_blank(),
-      plot.background  = element_rect(fill = "white", colour = NA)
+      plot.background = element_rect(fill = "white", colour = NA),
+      plot.margin = margin(10, 24, 10, 10)
     )
 }
-
 
 wrap_axis <- function(width = 20) {
   scale_x_discrete(labels = \(x) stringr::str_wrap(x, width))
 }
-# Helper function — add near the top of your script, after theme_cbuz
+
 expand_palette <- function(palette, n) {
   colorRampPalette(RColorBrewer::brewer.pal(
     min(n, RColorBrewer::brewer.pal.info[palette, "maxcolors"]), palette
@@ -82,61 +87,91 @@ expand_palette <- function(palette, n) {
 }
 
 save_fig <- function(name, w = 10, h = 6) {
-  path <- file.path("outputs/figures", paste0(name, ".png"))
+  path <- file.path("outputs/figures/final_uz", paste0(name, ".png"))
   ggsave(path, width = w, height = h, dpi = 150, bg = "white")
   cat(sprintf("  [OK] %s.png\n", name))
 }
 
-# ── Convenience subsets ──────────────────────────────────────
-borrowers     <- df %>% filter(has_loan == 1)
-non_borrowers <- df %>% filter(has_loan == 0)
-npl_only      <- borrowers %>% filter(is_npl == 1)
+classify_primary_source <- function(x) {
+  case_when(
+    x %in% c(
+      "Банк ташкилотларига",
+      "Микромолия ташкилотларига",
+      "Расмий насия хизматларига (“Техномарт”, “Узум”, “Ишонч” в.б.)",
+      "Ломбардларга"
+    ) ~ "Расмий",
+    x %in% c("Оила аъзолари, дўстлар ёки танишларга") ~ "Яқинлар",
+    x %in% c(
+      "Кўчада фоиз эвазига пул (қарз) берувчи норасмий шахсларга",
+      "Норасмий насия хизматига (бозорлар, дўконлар в.б.)"
+    ) ~ "Норасмий",
+    x %in% c("Қарз, кредит, насия олмасдан бошқа ечим қидирар эдим") ~ "Қарз олмаслик",
+    TRUE ~ "Бошқа"
+  )
+}
 
+source_palette <- c(
+  "Расмий" = COL_BORROW,
+  "Яқинлар" = COL_DELAY,
+  "Норасмий" = COL_NPL,
+  "Қарз олмаслик" = "#7A7A7A",
+  "Бошқа" = "#CFD8DC"
+)
+
+borrowers <- df %>% filter(has_loan == 1)
+non_borrowers <- df %>% filter(has_loan == 0)
+npl_only <- borrowers %>% filter(is_npl == 1)
+
+status_n_text <- borrowers %>%
+  filter(!is.na(repay_group)) %>%
+  count(repay_group) %>%
+  mutate(txt = sprintf("%s: n=%d", repay_group, n)) %>%
+  pull(txt) %>%
+  paste(collapse = " | ")
+
+econ_dir <- file.path("outputs", "tables", "econometrics")
+has_robust_econ <- all(file.exists(
+  file.path(econ_dir, c("M4_marginal_effects.csv", "M5_model_fit_comparison.csv"))
+))
+
+if (has_robust_econ) {
+  ame_tbl <- read.csv(file.path(econ_dir, "M4_marginal_effects.csv"), check.names = FALSE)
+  fit_tbl <- read.csv(file.path(econ_dir, "M5_model_fit_comparison.csv"), check.names = FALSE)
+}
 # ============================================================
 # BLOCK 1 – DEMOGRAPHICS (Charts 1–8)
 # ============================================================
 cat("\n--- Block 1: Demographics (charts 1-8) ---\n")
 
 # ── Chart 1: Regional distribution ──────────────────────────
-reg_sum <- df %>%
+reg_share <- df %>%
+  filter(!is.na(region)) %>%
   group_by(region) %>%
   summarise(
-    Қарздорлар     = sum(has_loan),
-    `Қарз олмаганлар` = sum(1 - has_loan),
-    total          = n(),
+    n = n(),
+    borrower_share = 100 * mean(has_loan == 1, na.rm = TRUE),
     .groups = "drop"
   ) %>%
-  pivot_longer(c(Қарздорлар, `Қарз олмаганлар`),
-               names_to = "status", values_to = "n") %>%
   mutate(
-    pct    = 100 * n / total,
-    region = fct_reorder(str_wrap(region, 25), total)
+    low_n = n < 120,
+    region = fct_reorder(str_wrap(region, 24), borrower_share)
   )
 
-reg_total <- reg_sum %>%
-  distinct(region, total)
-
-ggplot(reg_sum, aes(x = n, y = region, fill = status)) +
-  geom_col(position = "stack") +
-  geom_text(aes(label = sprintf("%.1f%%", pct)
-                ),
-            position = position_stack(vjust = 0.5), size = 3.5) +
-  # total per region
-  geom_text(
-    data = reg_total,
-    aes(x = total, y = region, label = paste0("N=", total)),
-    inherit.aes = FALSE,
-    hjust = -0.1,
-    size = 2.9,
-    fontface = "bold"
+ggplot(reg_share, aes(x = borrower_share, y = region)) +
+  geom_segment(aes(x = 0, xend = borrower_share, yend = region), colour = "grey80", linewidth = 0.8) +
+  geom_point(aes(colour = low_n), size = 4.2, alpha = 0.95, show.legend = FALSE) +
+  geom_text(aes(label = sprintf("%.1f%% | n=%d", borrower_share, n), x = borrower_share + 2.1), hjust = 0, size = 3.2) +
+  scale_colour_manual(values = c("TRUE" = COL_NPL, "FALSE" = COL_BORROW)) +
+  scale_x_continuous(labels = label_number(suffix = "%"), expand = expansion(mult = c(0, 0.22))) +
+  labs(
+    title = "1-расм. Ҳудудлар бўйича қарздорлар улуши",
+    subtitle = sprintf("Барча респондентлар, n=%d. Қизил нуқталар n<120 бўлган ҳудудлар", nrow(df)),
+    x = "Қарздор респондентлар улуши",
+    y = NULL,
+    caption = "Стратификацияланган танланма таркиби кўрсатилган; миллий улуш сифатида талқин қилинмаслиги керак."
   ) +
-  scale_fill_manual(values = c(
-    "Қарздорлар"      = COL_BORROW,
-    "Қарз олмаганлар" = COL_NOBORROW)) +
-  labs(title = "Респондентларнинг ҳудудлар бўйича тақсимоти",
-       x = "Респондентлар сони", y = NULL) +
   theme_cbuz()
-save_fig("chart_01_regional_distribution")
+save_fig("chart_01_regional_distribution", h = 6.5)
 
 # ── Chart 2: Age distribution by borrower status ─────────────
 age_sum <- df %>%
@@ -311,29 +346,155 @@ ggplot(edu_sum, aes(x = education, y = pct, fill = status)) +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 save_fig("chart_08_education")
 
+# ── Shared label maps for redesigned blocks ─────────────────
+purp_cols <- c(
+  "loan_purpose__daily_expenses", "loan_purpose__healthcare",
+  "loan_purpose__appliances",     "loan_purpose__auto",
+  "loan_purpose__education",      "loan_purpose__wedding",
+  "loan_purpose__mortgage",       "loan_purpose__renovation",
+  "loan_purpose__debt_repayment", "loan_purpose__migration_work",
+  "loan_purpose__business",       "loan_purpose__family_entrepreneurship",
+  "loan_purpose__help_relatives", "loan_purpose__other"
+)
+purp_labels <- c(
+  "Кунлик харажатлар", "Соғлиқ/Таълим", "Маиший техника", "Автомобил",
+  "Таълим", "Тўй/Маросим", "Ипотека", "Таъмирлаш", "Бошқа қарзни тўлаш",
+  "Миграция", "Бизнес", "Оилавий тадбиркорлик", "Қариндошларга ёрдам", "Бошқа"
+)
+names(purp_labels) <- purp_cols
+
+key_purps <- c(
+  "loan_purpose__daily_expenses", "loan_purpose__appliances",
+  "loan_purpose__wedding",        "loan_purpose__debt_repayment",
+  "loan_purpose__business",       "loan_purpose__family_entrepreneurship"
+)
+
+dec_cols <- c(
+  "loan_decision_factor__necessity",
+  "loan_decision_factor__incentive_available",
+  "loan_decision_factor__recommendation",
+  "loan_decision_factor__government_recommendation",
+  "loan_decision_factor__fraud",
+  "loan_decision_factor__build_credit_history",
+  "loan_decision_factor__inflation_fear",
+  "loan_decision_factor__other"
+)
+dec_labels <- c(
+  "Зарурият", "Имтиёз мавжудлиги", "Тавсия", "Давлат тавсияси",
+  "Фирибгарлик", "Кредит тарихи яратиш", "Инфляциядан қўрқиш", "Бошқа"
+)
+names(dec_labels) <- dec_cols
+
+coll_cols <- c(
+  "collection_methods_received__sms",
+  "collection_methods_received__calls",
+  "collection_methods_received__bank_visit",
+  "collection_methods_received__mib_officer_visit",
+  "collection_methods_received__guarantor_contact",
+  "collection_methods_received__official_warning_letter",
+  "collection_methods_received__court_proceedings",
+  "collection_methods_received__collateral_action"
+)
+coll_labels <- c(
+  "SMS", "Қўнғироқ", "Банк ходими ташрифи", "МИБ ходими ташрифи",
+  "Кафил билан боғланиш", "Расмий огоҳлантириш", "Суд жараёни", "Гаров чоралари"
+)
+names(coll_labels) <- coll_cols
+
+eff_cols <- c(
+  "effective_reminder_method__sms",
+  "effective_reminder_method__calls",
+  "effective_reminder_method__app_notification",
+  "effective_reminder_method__messenger_telegram_whatsapp",
+  "effective_reminder_method__guarantor_call",
+  "effective_reminder_method__in_person",
+  "effective_reminder_method__other",
+  "effective_reminder_method__no_effect"
+)
+eff_labels <- c(
+  "SMS", "Қўнғироқ", "Банк иловаси", "Telegram/WhatsApp",
+  "Кафил қўнғироғи", "Юзма-юз учрашув", "Бошқа", "Самарасиз"
+)
+names(eff_labels) <- eff_cols
+
+supp_cols <- c(
+  "family_biz_support__business_training",
+  "family_biz_support__flexible_schedule",
+  "family_biz_support__staged_disbursement",
+  "family_biz_support__business_plan_help",
+  "family_biz_support__strengthen_oversight",
+  "family_biz_support__cash_and_card",
+  "family_biz_support__other"
+)
+supp_labels <- c(
+  "Бизнес тренинглар", "Мослашувчан жадвал", "Босқичма-босқич бериш",
+  "Бизнес режа ёрдами", "Назоратни кучайтириш", "Нақд ва пластик", "Бошқа"
+)
+names(supp_labels) <- supp_cols
+
+fbiz_cols <- c(
+  "family_biz_reason__business_idea",
+  "family_biz_reason__lower_interest",
+  "family_biz_reason__inspired_by_others",
+  "family_biz_reason__social_pressure",
+  "family_biz_reason__trusted_advice",
+  "family_biz_reason__other"
+)
+fbiz_labels <- c(
+  "Бизнес ғояни амалга ошириш", "Паст фоизлар",
+  "Атрофимдагилар тажрибаси", "Босим остида",
+  "Маслаҳатга ишониш", "Бошқа"
+)
+names(fbiz_labels) <- fbiz_cols
+
+prio_cols <- c(
+  "repayment_priority__banks",
+  "repayment_priority__family_friends",
+  "repayment_priority__street_lenders",
+  "repayment_priority__formal_installment",
+  "repayment_priority__informal_installment",
+  "repayment_priority__mfi"
+)
+prio_labels <- c(
+  "Банклар", "Оила/Дўстлар", "Кўчада фоиз",
+  "Расмий насия", "Норасмий насия", "МФТ"
+)
+names(prio_labels) <- prio_cols
+
 # ============================================================
 # BLOCK 2 – CREDIT BEHAVIOUR (Charts 9–16)
 # ============================================================
 cat("\n--- Block 2: Credit Behaviour (charts 9-16) ---\n")
 
 # ── Chart 9: Primary credit source preference ────────────────
-src_pref <- df %>%
-  filter(!is.na(credit_source_primary)) %>%
-  count(credit_source_primary) %>%
+source_top <- df %>%
+  filter(!is.na(credit_source_primary), credit_source_primary != "Бошқа манбаларга (кўрсатинг)") %>%
+  count(credit_source_primary, name = "n") %>%
   mutate(
-    pct   = 100 * n / sum(n),
-    label = fct_reorder(str_wrap(credit_source_primary, 32), n)
-  ) %>% 
-  filter(credit_source_primary != "Бошқа манбаларга (кўрсатинг)")
+    pct = 100 * n / sum(n),
+    source_type = classify_primary_source(credit_source_primary),
+    label = case_when(
+      credit_source_primary == "Расмий насия хизматларига (“Техномарт”, “Узум”, “Ишонч” в.б.)" ~ "Расмий насия хизматлари",
+      credit_source_primary == "Қарз, кредит, насия олмасдан бошқа ечим қидирар эдим" ~ "Қарз олмасдан бошқа ечим қидирар эдим",
+      TRUE ~ credit_source_primary
+    ),
+    label = str_wrap(label, 28)
+  ) %>%
+  arrange(desc(n)) %>%
+  slice_head(n = 8) %>%
+  mutate(label = fct_reorder(label, n))
 
-ggplot(src_pref, aes(x = pct, y = label, fill = label)) +
-  geom_col(show.legend = FALSE) +
-  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
-  scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
-  scale_fill_manual(values = colorRampPalette(RColorBrewer::brewer.pal(12, "Set3"))(nrow(src_pref)))+
-  labs(title = str_wrap("3-расм. Зарур бўлганда биринчи навбатда мурожаат қилинадиган қарз манбаси",
-                        width = 45),
-       x = "Фоиз", y = NULL) +
+ggplot(source_top, aes(x = n, y = label, fill = source_type)) +
+  geom_col(width = 0.72, show.legend = FALSE) +
+  geom_text(aes(label = sprintf("n=%d | %.1f%%", n, pct)), hjust = -0.1, size = 3.5) +
+  scale_fill_manual(values = source_palette) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.24))) +
+  labs(
+    title = "3-расм. Зарур бўлганда биринчи мурожаат қилинадиган қарз манбалари",
+    subtitle = sprintf("Барча респондентлар, n=%d. Ранглар манба турини англатади", nrow(df)),
+    x = "Респондентлар сони",
+    y = NULL
+  ) +
   theme_cbuz()
 save_fig("chart_09_primary_credit_source")
 
@@ -372,7 +533,9 @@ ggplot(inf_sum, aes(x = pct, y = label, fill = label)) +
   scale_fill_brewer(palette = "Set3") +
   labs(
     title = "5-расм. Норасмий манбага мурожаат қилиш сабаблари",
-    subtitle = sprintf("Фақат 2.2.а саволи берилган респондентлар, n=%d", nrow(inf_base)),
+    subtitle = str_wrap("Норасмий манбалар: оила аъзолари (дўстлар, танишлар), норасмий насия ёки кўчадан қарз", 
+                        width = 70)
+    ,
     x = "Фоиз",
     y = NULL
   ) +
@@ -398,7 +561,7 @@ bank_labels <- c(
 names(bank_labels) <- bank_cols
 
 bank_base <- df %>%
-  filter(!is.na(credit_source_primary), credit_source_primary == "Банк ташкилотларига")
+  filter(!is.na(bank_reason))
 
 bank_sum <- bank_base %>%
   summarise(across(all_of(bank_cols), ~ sum(.x, na.rm = TRUE))) %>%
@@ -416,7 +579,7 @@ ggplot(bank_sum, aes(x = pct, y = label, fill = label)) +
   scale_fill_brewer(palette = "Set3") +
   labs(
     title = "4-расм. Тижорат банкига мурожаат қилиш сабаблари",
-    subtitle = sprintf("Фақат тижорат банкларини биринчи манба сифатида танлаган респондентлар, n=%d", nrow(bank_base)),
+    subtitle = sprintf("Фақат 2.2.б саволи берилган респондентлар, n=%d", nrow(bank_base)),
     x = "Фоиз",
     y = NULL
   ) +
@@ -503,104 +666,83 @@ ggplot(act_sum, aes(x = pct, y = label, fill = label)) +
 save_fig("chart_13_actual_credit_sources")
 
 # ── Chart 14: Loan purposes (borrowers, %) ───────────────────
-purp_cols <- c(
-  "loan_purpose__daily_expenses", "loan_purpose__healthcare",
-  "loan_purpose__appliances",     "loan_purpose__auto",
-  "loan_purpose__education",      "loan_purpose__wedding",
-  "loan_purpose__mortgage",       "loan_purpose__renovation",
-  "loan_purpose__debt_repayment", "loan_purpose__migration_work",
-  "loan_purpose__business",       "loan_purpose__family_entrepreneurship",
-  "loan_purpose__help_relatives", "loan_purpose__other"
-)
-purp_labels <- c(
-  "Кунлик харажатлар", "Соғлиқ/Таълим", "Маиший техника", "Автомобил",
-  "Таълим", "Тўй/Маросим", "Ипотека", "Таъмирлаш", "Бошқа қарзни тўлаш",
-  "Миграция", "Бизнес", "Оилавий тадбиркорлик", "Қариндошларга ёрдам", "Бошқа"
-)
-
-names(purp_labels) <- purp_cols
-
-purp_sum <- borrowers %>%
-  summarise(across(all_of(purp_cols), ~ 100 * mean(.x, na.rm = TRUE))) %>%
-  pivot_longer(everything(), names_to = "purpose", values_to = "pct") %>%
+purp_top <- borrowers %>%
+  summarise(across(all_of(purp_cols), ~ sum(.x, na.rm = TRUE))) %>%
+  pivot_longer(everything(), names_to = "purpose", values_to = "n") %>%
   mutate(
-    label = purp_labels[purpose],
-    label = fct_reorder(label, pct)
-  )
+    pct = 100 * n / nrow(borrowers),
+    label = purp_labels[purpose]
+  ) %>%
+  arrange(desc(n)) %>%
+  slice_head(n = 8) %>%
+  mutate(label = fct_reorder(label, n))
 
-ggplot(purp_sum, aes(x = pct, y = label, fill = label)) +
-  geom_col(show.legend = FALSE) +
-  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
-  scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
-  scale_fill_manual(values = colorRampPalette(RColorBrewer::brewer.pal(12, "Set3"))(nrow(purp_sum)))+
-  # scale_fill_brewer(palette = "Set3") +
+ggplot(purp_top, aes(x = n, y = label)) +
+  geom_col(fill = "#7A7A7A", width = 0.72) +
+  geom_text(aes(label = sprintf("n=%d | %.1f%%", n, pct)), hjust = -0.1, size = 3.5) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.24))) +
   labs(
-    title    = "8-расм. Олинган қарз (кредит) мақсадлари (%)",
-    subtitle = sprintf("Қарздорлар — N = %d", nrow(borrowers)),
-    x = "%", y = NULL
+    title = "8-расм. Олинган қарз мақсадлари: энг кўп учрайдиган йўналишлар",
+    subtitle = sprintf("Қарздорлар, n=%d | Топ-8 мақсад", nrow(borrowers)),
+    x = "Белгиланган ҳолатлар сони",
+    y = NULL,
+    caption = "Кўп жавобли савол: улушлар йиғиндиси 100% бўлмаслиги мумкин."
   ) +
   theme_cbuz()
-save_fig("chart_14_loan_purposes", h = 7)
+save_fig("chart_14_loan_purposes", h = 6.6)
 
 # ── Chart 15: Loan purpose × repayment status ────────────────
-key_purps <- c(
-  "loan_purpose__daily_expenses", "loan_purpose__appliances",
-  "loan_purpose__wedding",        "loan_purpose__debt_repayment",
-  "loan_purpose__business",       "loan_purpose__family_entrepreneurship"
-)
-
-purp_by_status <- borrowers %>%
+purp_status <- borrowers %>%
   filter(!is.na(repay_group)) %>%
   group_by(repay_group) %>%
-  summarise(across(all_of(key_purps), ~ 100 * mean(.x, na.rm = TRUE)),
-            .groups = "drop") %>%
+  summarise(across(all_of(key_purps), ~ 100 * mean(.x, na.rm = TRUE)), .groups = "drop") %>%
   pivot_longer(-repay_group, names_to = "purpose", values_to = "pct") %>%
   mutate(label = purp_labels[purpose])
 
-ggplot(purp_by_status, aes(x = label, y = pct, fill = repay_group)) +
-  geom_col(position = "dodge") +
-  geom_text(aes(label = sprintf("%.1f%%", pct)),
-            position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
+order_tbl <- purp_status %>%
+  group_by(label) %>%
+  summarise(max_pct = max(pct), .groups = "drop")
+
+purp_status <- purp_status %>%
+  left_join(order_tbl, by = "label") %>%
+  mutate(label = fct_reorder(label, max_pct))
+
+ggplot(purp_status, aes(x = pct, y = label, fill = repay_group)) +
+  geom_col(show.legend = FALSE, width = 0.68) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.2) +
+  facet_wrap(~ repay_group, nrow = 1) +
   scale_fill_manual(values = PALETTE3) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = "9-расм. Қарздорлар тўлов ҳолатига кўра қарз (кредит) мақсади (%)",
-       x = NULL, y = "%") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
+  labs(
+    title = "9-расм. Тўлов ҳолатига кўра асосий қарз мақсадлари",
+    subtitle = status_n_text,
+    x = "Улуш (%)",
+    y = NULL
+  ) +
   theme_cbuz() +
-  theme(axis.text.x = element_text(angle = 35, hjust = 1))
-save_fig("chart_15_purpose_by_status", w = 11)
+  theme(strip.text = element_text(face = "bold"))
+save_fig("chart_15_purpose_by_status", w = 13.2, h = 6.6)
 
 # ── Chart 16: Loan decision factors ──────────────────────────
-dec_cols <- c(
-  "loan_decision_factor__necessity",
-  "loan_decision_factor__incentive_available",
-  "loan_decision_factor__recommendation",
-  "loan_decision_factor__government_recommendation",
-  "loan_decision_factor__fraud",
-  "loan_decision_factor__build_credit_history",
-  "loan_decision_factor__inflation_fear",
-  "loan_decision_factor__other"
-)
-dec_labels <- c(
-  "Зарурият", "Имтиёз мавжудлиги", "Тавсия", "Давлат тавсияси",
-  "Фирибгарлик", "Кредит тарихи яратиш", "Инфляциядан қўрқиш", "Бошқа"
-)
-names(dec_labels) <- dec_cols
-
 dec_sum <- borrowers %>%
   summarise(across(all_of(dec_cols), ~ 100 * mean(.x, na.rm = TRUE))) %>%
   pivot_longer(everything(), names_to = "factor", values_to = "pct") %>%
   mutate(
     label = dec_labels[factor],
     label = fct_reorder(label, pct)
-  )
+  ) %>%
+  arrange(desc(pct))
 
-ggplot(dec_sum, aes(x = pct, y = label, fill = label)) +
-  geom_col(show.legend = FALSE) +
-  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
+ggplot(dec_sum, aes(x = pct, y = label)) +
+  geom_col(fill = COL_BORROW, width = 0.72) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.7) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
-  scale_fill_manual(values = colorRampPalette(RColorBrewer::brewer.pal(8, "Set2"))(nrow(dec_sum)))+
-  labs(title = "11-расм. Қарз (Кредит) олишга таъсир этган омиллар (%)",
-       x = "%", y = NULL) +
+  labs(
+    title = "11-расм. Қарз олишга таъсир этган омиллар",
+    subtitle = sprintf("Қарздорлар, n=%d", nrow(borrowers)),
+    x = "Улуш (%)",
+    y = NULL
+  ) +
   theme_cbuz()
 save_fig("chart_16_decision_factors")
 
@@ -615,48 +757,62 @@ dsr_sum <- borrowers %>%
   group_by(repay_group, dsr_cat) %>%
   summarise(n = n(), .groups = "drop") %>%
   group_by(repay_group) %>%
-  mutate(pct = 100 * n / sum(n))
+  mutate(
+    pct = 100 * n / sum(n),
+    dsr_label = forcats::fct_rev(factor(as.character(dsr_cat), levels = levels(borrowers$dsr_cat)))
+  ) %>%
+  ungroup() %>% 
+  filter(dsr_cat != "Жавоб бериш қийин (ўқилмасин)", 
+         dsr_cat != "0% (тўлов қилмайман)")
+  
 
-ggplot(dsr_sum, aes(x = dsr_cat, y = pct, fill = repay_group)) +
-  geom_col(position = "dodge") +
-  geom_text(aes(label = sprintf("%.1f%%", pct)),
-            position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
+ggplot(dsr_sum, aes(x = pct, y = dsr_label, fill = repay_group)) +
+  geom_col(show.legend = FALSE, width = 0.68) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.2) +
+  facet_wrap(~ repay_group, nrow = 1) +
   scale_fill_manual(values = PALETTE3) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = str_wrap("19-расм. Қарздорларнинг тўлов ҳолатига қараб қарз тўловларига йўналтирлаётган оилавий даромад қисми",
-                        width = 45),
-       x = "Қарзга йўналтирилаётган миқдор", y = "%") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
+  labs(
+    title = str_wrap("19-расм. Тўлов ҳолатига кўра қарз тўловларининг оилавий даромадга нисбати", width = 45),
+    subtitle = status_n_text,
+    x = "Улуш (%)",
+    y = NULL
+  ) +
   theme_cbuz() +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))+
-  wrap_axis()
-save_fig("chart_17_dti_by_status")
+  theme(strip.text = element_text(face = "bold"))
+save_fig("chart_17_dti_by_status", w = 12.8, h = 6.4)
 
 # ── Chart 18: Income volatility by repayment status ──────────
 vol_sum <- borrowers %>%
   filter(
     !is.na(income_variability),
     !is.na(repay_group),
-    as.character(income_variability) != "Жавоб бериш қийин"
+    as.character(income_variability) != "Жавоб бериш қийин (ўқилмасин)"
   ) %>%
   group_by(repay_group, income_variability) %>%
   summarise(n = n(), .groups = "drop") %>%
   group_by(repay_group) %>%
-  mutate(pct = 100 * n / sum(n))
+  mutate(
+    pct = 100 * n / sum(n),
+    income_variability = forcats::fct_rev(factor(as.character(income_variability), levels = unique(as.character(na.omit(borrowers$income_variability)))))
+  ) %>%
+  ungroup()
 
-
-
-ggplot(vol_sum, aes(x = income_variability, y = pct, fill = repay_group)) +
-  geom_col(position = "dodge") +
-  geom_text(aes(label = sprintf("%.1f%%", pct)),
-            position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
+ggplot(vol_sum, aes(x = pct, y = income_variability, fill = repay_group)) +
+  geom_col(show.legend = FALSE, width = 0.68) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.2) +
+  facet_wrap(~ repay_group, nrow = 1) +
   scale_fill_manual(values = PALETTE3) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = "17-расм. Қарздорларнинг тўлов ҳолатига қараб даромад барқарорлиги",
-       x = NULL, y = "%") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
+  labs(
+    title = "17-расм. Тўлов ҳолатига кўра даромад барқарорлиги",
+    subtitle = status_n_text,
+    x = "Улуш (%)",
+    y = NULL
+  ) +
   theme_cbuz() +
-  theme(axis.text.x = element_text(angle = 20, hjust = 1))+
-  wrap_axis(20)
-save_fig("chart_18_volatility_by_status")
+  theme(strip.text = element_text(face = "bold"))
+save_fig("chart_18_volatility_by_status", w = 12.8, h = 6.2)
 
 # ── Chart 19: NPL reasons (top, horizontal bar) ──────────────
 npl_reason_cols <- c(
@@ -725,20 +881,27 @@ contr_sum <- borrowers %>%
   group_by(repay_group, contract_read) %>%
   summarise(n = n(), .groups = "drop") %>%
   group_by(repay_group) %>%
-  mutate(pct = 100 * n / sum(n))
+  mutate(
+    pct = 100 * n / sum(n),
+    contract_read = forcats::fct_rev(factor(as.character(contract_read), levels = unique(as.character(na.omit(borrowers$contract_read)))))
+  ) %>%
+  ungroup()
 
-ggplot(contr_sum, aes(x = contract_read, y = pct, fill = repay_group)) +
-  geom_col(position = "dodge") +
-  geom_text(aes(label = sprintf("%.1f%%", pct)),
-            position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
+ggplot(contr_sum, aes(x = pct, y = contract_read, fill = repay_group)) +
+  geom_col(show.legend = FALSE, width = 0.68) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.2) +
+  facet_wrap(~ repay_group, nrow = 1) +
   scale_fill_manual(values = PALETTE3) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = str_wrap("21-расм. Қарз бўйича тўловлар ҳолатига қараб шартнома билан танишиш даражаси",
-                        width = 45),
-       x = NULL, y = "%") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
+  labs(
+    title = str_wrap("21-расм. Тўлов ҳолатига кўра шартнома билан танишиш даражаси", width = 45),
+    subtitle = status_n_text,
+    x = "Улуш (%)",
+    y = NULL
+  ) +
   theme_cbuz() +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))
-save_fig("chart_20_contract_by_status")
+  theme(strip.text = element_text(face = "bold"))
+save_fig("chart_20_contract_by_status", w = 12.8, h = 6.4)
 
 
 # ── Chart 21: Terms understood by repayment status ───────────
@@ -747,21 +910,28 @@ terms_sum <- borrowers %>%
   group_by(repay_group, terms_understood) %>%
   summarise(n = n(), .groups = "drop") %>%
   group_by(repay_group) %>%
-  mutate(pct = 100 * n / sum(n))
+  mutate(
+    pct = 100 * n / sum(n),
+    terms_understood = forcats::fct_rev(factor(as.character(terms_understood), levels = unique(as.character(na.omit(borrowers$terms_understood)))))
+  ) %>%
+  ungroup()
 
-ggplot(terms_sum, aes(x = terms_understood, y = pct, fill = repay_group)) +
-  geom_col(position = "dodge") +
-  geom_text(aes(label = sprintf("%.1f%%", pct)),
-            position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
+ggplot(terms_sum, aes(x = pct, y = terms_understood, fill = repay_group)) +
+  geom_col(show.legend = FALSE, width = 0.68) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.2) +
+  facet_wrap(~ repay_group, nrow = 1) +
   scale_fill_manual(values = PALETTE3) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = str_wrap("23-расм. Қарз бўйича тўлов ҳолатига кўра кредит шартларини тушуниш даражаси",
-                        width = 45),
-       x = NULL, y = "%") +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
+  labs(
+    title = str_wrap("23-расм. Тўлов ҳолатига кўра кредит шартларини тушуниш даражаси", width = 45),
+    subtitle = status_n_text,
+    x = "Улуш (%)",
+    y = NULL
+  ) +
   theme_cbuz() +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))+
-  wrap_axis()
-save_fig("chart_21_terms_by_status")
+  theme(strip.text = element_text(face = "bold"))+
+
+save_fig("chart_21_terms_by_status", w = 12.8, h = 6.4)
 
 # ── Chart 22: Credit regret by repayment status ───────────────
 regret_sum <- borrowers %>%
@@ -805,128 +975,119 @@ ggplot(online_contr, aes(x = contract_read, y = pct, fill = loan_channel)) +
 save_fig("chart_23_online_vs_offline")
 
 # ============================================================
-# BLOCK 5 – LOGISTIC REGRESSION (Charts 24, 31, 32)
+# BLOCK 5 – ROBUST ECONOMETRICS (Charts 24, 31, 32)
 # ============================================================
-cat("\n--- Block 5: Logistic Regression (charts 24, 31, 32) ---\n")
+cat("\n--- Block 5: Robust Econometrics (charts 24, 31, 32) ---\n")
 
-# ── Prepare model data ────────────────────────────────────────
-vol_map <- c(
-  "Барқарор, деярли ўзгармайди"  = 1,
-  "Бироз ўзгариб туради"        = 2,
-  "Жуда ўзгарувчан/мавсумий"   = 3
-)
+if (has_robust_econ) {
+  term_map <- c(
+    age = "Ёш",
+    dsr_midpoint = "Қарз юки (DSR)",
+    employed_binary = "Расмий банд",
+    fin_lit_score = "Молиявий саводхонлик",
+    financial_buffer_months = "Молиявий буфер (ой)",
+    has_higher_edu = "Олий маълумот",
+    hh_size = "Уй хўжалиги катталиги",
+    income_midpoint_mln_uzs = "Даромад (млн сўм)",
+    income_variability_num = "Даромад беқарорлиги",
+    is_male = "Эркак",
+    is_married = "Турмуш қурган",
+    productive_use_flag = "Мақсадли фойдаланиш"
+  )
 
-model_df <- borrowers %>%
-  mutate(
-    is_male               = as.integer(gender == "Эркак"),
-    is_married            = as.integer(marital_status == "Турмуш қурган"),
-    has_higher_edu        = as.integer(as.character(education) == "Олий таълим (бакалавр, магистр в.б.)"),
-    income_variability_num = vol_map[as.character(income_variability)]
-  ) %>%
-  select(
-    is_npl, age_w, is_male, is_married, has_higher_edu,
-    income_midpoint_mln_uzs_w, dsr_midpoint, financial_buffer_months,
-    income_variability_num, fin_lit_score, employed_binary,
-    hh_size_w, productive_use_flag
-  ) %>%
-  drop_na()
-
-cat(sprintf("  Model sample: N = %d  (NPL rate = %.1f%%)\n",
-            nrow(model_df), 100 * mean(model_df$is_npl)))
-
-fit <- glm(is_npl ~ ., data = model_df, family = binomial)
-
-acc_val    <- 100 * mean(round(fitted(fit)) == model_df$is_npl)
-mcf_r2     <- as.numeric(1 - logLik(fit) /
-                           logLik(glm(is_npl ~ 1, data = model_df, family = binomial)))
-
-var_rename <- c(
-  age_w                     = "Ёш",
-  is_male                   = "Эркак жинси",
-  is_married                = "Уйланган/турмушга чиққан",
-  has_higher_edu            = "Олий маълумот",
-  income_midpoint_mln_uzs_w = "Даромад (млн сўм)",
-  dsr_midpoint              = "ҚХН (DSR)",
-  financial_buffer_months   = "Молиявий буфер (ой)",
-  income_variability_num    = "Даромад барқарорлиги",
-  fin_lit_score             = "Молиявий саводхонлик",
-  employed_binary           = "Расмий банд",
-  hh_size_w                 = "Уй хўжалиги катталиги",
-  productive_use_flag       = "Самарали фойдаланиш"
-)
-
-if (HAS_BROOM) {
-  coef_df <- broom::tidy(fit, conf.int = TRUE, exponentiate = FALSE) %>%
-    filter(term != "(Intercept)") %>%
+  ame_region <- ame_tbl %>%
+    filter(model == "region_fe_logit") %>%
     mutate(
-      OR        = exp(estimate),
-      conf_low  = exp(conf.low),
-      conf_high = exp(conf.high),
-      direction = ifelse(estimate > 0, "Риск омили", "Ҳимоя омили"),
-      var_label = recode(term, !!!var_rename), 
-      var_label = reorder(var_label, estimate)
+      var_label = recode(term, !!!term_map),
+      direction = ifelse(marginal_effect >= 0, "Риск омили", "Ҳимоя омили"),
+      var_label = fct_reorder(var_label, marginal_effect)
     )
-  
-  
-  # Chart 24: Logistic coefficients (horizontal bar)
-  ggplot(coef_df, aes(x = estimate, y = var_label, fill = direction)) +
-    geom_col() +
-    geom_vline(xintercept = 0, linetype = "dashed", colour = "black") +
-    geom_text(
-      aes(label    = sprintf("OR=%.2f", OR),
-          hjust    = ifelse(estimate > 0, -0.1, 1.1)),
-      size = 3.5
-    ) +
-    scale_fill_manual(values = c("Риск омили" = COL_NPL,
-                                 "Ҳимоя омили" = COL_ONTIME)) +
+
+  ggplot(ame_region, aes(x = marginal_effect, y = var_label, colour = direction)) +
+    geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+    geom_errorbar(aes(xmin = conf_low, xmax = conf_high), width = 0.2, linewidth = 0.8, orientation = "y") +
+    geom_point(size = 3.8) +
+    geom_text(aes(label = sprintf("%.3f", marginal_effect), hjust = ifelse(marginal_effect >= 0, -0.2, 1.2)), size = 3.1, show.legend = FALSE) +
+    scale_colour_manual(values = c("Риск омили" = COL_NPL, "Ҳимоя омили" = COL_ONTIME)) +
+    scale_x_continuous(expand = expansion(mult = c(0.16, 0.18))) +
     labs(
-      title    = sprintf("Логистик регрессия: коэффициентлар (N=%d)",
-                         nrow(model_df)),
-      subtitle = sprintf("Аниқлик: %.1f%%  |  McFadden R²: %.3f",
-                         acc_val, mcf_r2),
-      x = "Коэффициент (logit)", y = NULL
+      title = "24-расм. NPL эҳтимолига таъсир этувчи омиллар: ўртача чекли таъсир (AME)",
+      subtitle = "Ҳудудий fixed effects logit модели, 95% ишонч оралиғи",
+      x = "AME",
+      y = NULL
     ) +
     theme_cbuz()
   save_fig("chart_24_logistic_coef", h = 7)
-  
-  # Chart 31: Odds ratio forest plot
-  ggplot(coef_df, aes(x = OR, y = var_label, colour = direction)) +
-    geom_point(size = 4) +
-    geom_errorbarh(aes(xmin = conf_low, xmax = conf_high), height = 0.3) +
-    geom_vline(xintercept = 1, linetype = "dashed", colour = "black") +
-    scale_colour_manual(values = c("Риск омили" = COL_NPL,
-                                   "Ҳимоя омили" = COL_ONTIME)) +
-    labs(title = "31-расм. NPL эҳтимолига таъсир: OR Forest Plot (95% CI)",
-         x = "Odds Ratio", y = NULL) +
-    theme_cbuz()
-  save_fig("chart_31_odds_ratios", h = 7)
-  
-} else {
-  message("  [SKIP charts 24 & 31] Install 'broom' package: install.packages('broom')")
-}
 
-# Chart 32: ROC curve
-if (HAS_PROC) {
-  roc_obj <- pROC::roc(model_df$is_npl, fitted(fit), quiet = TRUE)
-  auc_val <- as.numeric(pROC::auc(roc_obj))
-  roc_df  <- data.frame(
-    spec = roc_obj$specificities,
-    sens = roc_obj$sensitivities
-  )
-  ggplot(roc_df, aes(x = 1 - spec, y = sens)) +
-    geom_line(colour = COL_BORROW, linewidth = 1) +
-    geom_abline(slope = 1, intercept = 0,
-                linetype = "dashed", colour = "grey60") +
-    annotate("text", x = 0.72, y = 0.28,
-             label = sprintf("AUC = %.3f", auc_val),
-             size = 5, colour = COL_BORROW) +
-    labs(title = "ROC эгри чизиғи – NPL логистик модели",
-         x = "1 − Ўзига хослик (1 − Specificity)",
-         y = "Сезгирлик (Sensitivity)") +
+  key_ame <- ame_region %>%
+    filter(term %in% c("dsr_midpoint", "financial_buffer_months", "income_variability_num", "fin_lit_score")) %>%
+    mutate(
+      step = case_when(
+        term == "dsr_midpoint" ~ "+10 фоиз пункт",
+        term == "financial_buffer_months" ~ "+1 ой",
+        term == "income_variability_num" ~ "+1 поғона",
+        term == "fin_lit_score" ~ "+1 балл",
+        TRUE ~ "+1"
+      ),
+      display_effect = ifelse(term == "dsr_midpoint", marginal_effect * 10, marginal_effect),
+      display_low = ifelse(term == "dsr_midpoint", conf_low * 10, conf_low),
+      display_high = ifelse(term == "dsr_midpoint", conf_high * 10, conf_high),
+      policy_label = case_when(
+        term == "dsr_midpoint" ~ "Қарз юки (DSR)",
+        term == "financial_buffer_months" ~ "Молиявий буфер",
+        term == "income_variability_num" ~ "Даромад беқарорлиги",
+        term == "fin_lit_score" ~ "Молиявий саводхонлик",
+        TRUE ~ var_label
+      ),
+      policy_label = paste0(policy_label, " | ", step),
+      direction = ifelse(display_effect >= 0, "Риск омили", "Ҳимоя омили"),
+      policy_label = fct_reorder(policy_label, display_effect)
+    )
+
+  ggplot(key_ame, aes(x = display_effect, y = policy_label, fill = direction)) +
+    geom_col(width = 0.68, show.legend = FALSE) +
+    geom_errorbar(aes(xmin = display_low, xmax = display_high), width = 0.18, linewidth = 0.8, orientation = "y") +
+    geom_text(aes(label = sprintf("%.1f п.п.", 100 * display_effect), hjust = ifelse(display_effect >= 0, -0.1, 1.1)), size = 3.4) +
+    scale_fill_manual(values = c("Риск омили" = COL_NPL, "Ҳимоя омили" = COL_ONTIME)) +
+    scale_x_continuous(labels = label_number(accuracy = 0.01), expand = expansion(mult = c(0.18, 0.2))) +
+    labs(
+      title = "31-расм. Асосий омилларнинг амалий таъсири",
+      subtitle = "Қийматлар AME асосида: NPL эҳтимолидаги ўзгариш",
+      x = "Эҳтимол ўзгариши",
+      y = NULL,
+      caption = "DSR учун таъсир +10 фоиз пункт ўзгаришга қайта ҳисобланган; қолганлари +1 бирлик қадамида."
+    ) +
     theme_cbuz()
-  save_fig("chart_32_roc_curve")
+  save_fig("chart_31_odds_ratios", h = 6.6)
+
+  fit_vis <- fit_tbl %>%
+    mutate(
+      model_label = recode(
+        model,
+        base_logit = "Базавий logit",
+        region_fe_logit = "Ҳудуд FE logit",
+        nonlinear_logit = "Ночизиқли logit",
+        penalized_lasso = "LASSO",
+        penalized_ridge = "Ridge"
+      ),
+      model_label = fct_reorder(model_label, auc)
+    )
+
+  ggplot(fit_vis, aes(x = auc, y = model_label)) +
+    geom_segment(aes(x = 0.5, xend = auc, yend = model_label), colour = "grey80", linewidth = 0.8) +
+    geom_point(size = 4, colour = COL_BORROW) +
+    geom_text(aes(label = sprintf("AUC=%.3f | Accuracy=%.1f%%", auc, accuracy), x = auc + 0.006), hjust = 0, size = 3.2) +
+    scale_x_continuous(limits = c(0.5, 0.78), expand = expansion(mult = c(0, 0.08))) +
+    labs(
+      title = "32-расм. Робаст моделлар таққосланиши",
+      subtitle = "AUC бўйича сараланган; ёрлиқларда accuracy ҳам берилган",
+      x = "AUC",
+      y = NULL
+    ) +
+    theme_cbuz()
+  save_fig("chart_32_roc_curve", h = 5.8)
 } else {
-  message("  [SKIP chart 32] Install 'pROC' package: install.packages('pROC')")
+  message("  [SKIP charts 24, 31, 32] Robust econometrics tables not found in outputs/tables/econometrics")
 }
 
 # ============================================================
@@ -935,63 +1096,37 @@ if (HAS_PROC) {
 cat("\n--- Block 6: Collection Methods (charts 25-26) ---\n")
 
 # ── Chart 25: Collection methods × repayment status ──────────
-coll_cols <- c(
-  "collection_methods_received__sms",
-  "collection_methods_received__calls",
-  "collection_methods_received__bank_visit",
-  "collection_methods_received__mib_officer_visit",
-  "collection_methods_received__guarantor_contact",
-  "collection_methods_received__official_warning_letter",
-  "collection_methods_received__court_proceedings",
-  "collection_methods_received__collateral_action"
-)
-coll_labels <- c(
-  "SMS", "Қўнғироқ", "Банк ходими ташрифи", "МИБ ходими ташрифи",
-  "Кафил билан боғланиш", "Расмий огоҳлантириш",
-  "Суд жараёни", "Гаров чоралари"
-)
-names(coll_labels) <- coll_cols
-
 coll_sum <- borrowers %>%
-  filter(repay_group %in% c("On-time", "NPL (3+ months)")) %>%
+  filter(repay_group %in% c("Ўз вақтида тўловчилар", "NPL")) %>%
   group_by(repay_group) %>%
-  summarise(across(all_of(coll_cols), ~ 100 * mean(.x, na.rm = TRUE)),
-            .groups = "drop") %>%
+  summarise(across(all_of(coll_cols), ~ 100 * mean(.x, na.rm = TRUE)), .groups = "drop") %>%
   pivot_longer(-repay_group, names_to = "method", values_to = "pct") %>%
-  mutate(
-    label = coll_labels[method],
-    label = fct_reorder(label, pct, .fun = mean)
-  )
+  mutate(label = coll_labels[method])
+
+coll_order <- coll_sum %>%
+  group_by(label) %>%
+  summarise(max_pct = max(pct), .groups = "drop")
+
+coll_sum <- coll_sum %>%
+  left_join(coll_order, by = "label") %>%
+  mutate(label = fct_reorder(label, max_pct))
 
 ggplot(coll_sum, aes(x = pct, y = label, fill = repay_group)) +
-  geom_col(position = "dodge") +
-  geom_text(aes(label = sprintf("%.1f%%", pct)),
-            position = position_dodge(width = 0.9), hjust = -0.1, size = 3.5) +
-  scale_fill_manual(values = PALETTE3[c("On-time", "NPL (3+ months)")]) +
-  scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
-  labs(title = str_wrap("28-расм. Қарздорлар тўлов ҳолатига кўра ундириш учун қўлланилган чоралар",
-                        width = 45),
-       x = "%", y = NULL) +
-  theme_cbuz()
-save_fig("chart_25_collection_by_status")
+  geom_col(show.legend = FALSE, width = 0.68) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.2) +
+  facet_wrap(~ repay_group, nrow = 1) +
+  scale_fill_manual(values = PALETTE3[c("Ўз вақтида тўловчи", "NPL")]) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.2))) +
+  labs(
+    title = "28-расм. Тўлов ҳолатига кўра ундириш чоралари",
+    x = "Улуш (%)",
+    y = NULL
+  ) +
+  theme_cbuz() +
+  theme(strip.text = element_text(face = "bold"))
+save_fig("chart_25_collection_by_status", w = 12.8, h = 6.4)
 
 # ── Chart 26: Effective reminder methods ─────────────────────
-eff_cols <- c(
-  "effective_reminder_method__sms",
-  "effective_reminder_method__calls",
-  "effective_reminder_method__app_notification",
-  "effective_reminder_method__messenger_telegram_whatsapp",
-  "effective_reminder_method__guarantor_call",
-  "effective_reminder_method__in_person",
-  "effective_reminder_method__other",
-  "effective_reminder_method__no_effect"
-)
-eff_labels <- c(
-  "SMS", "Қўнғироқ", "Банк иловаси", "Telegram/WhatsApp",
-  "Кафил қўнғироғи", "Юзма-юз учрашув", "Бошқа", "Самарасиз"
-)
-names(eff_labels) <- eff_cols
-
 eff_sum <- borrowers %>%
   summarise(across(all_of(eff_cols), ~ 100 * mean(.x, na.rm = TRUE))) %>%
   pivot_longer(everything(), names_to = "method", values_to = "pct") %>%
@@ -1000,14 +1135,16 @@ eff_sum <- borrowers %>%
     label = fct_reorder(label, pct)
   )
 
-ggplot(eff_sum, aes(x = pct, y = label, fill = pct)) +
-  geom_col(show.legend = FALSE) +
+ggplot(eff_sum, aes(x = pct, y = label)) +
+  geom_col(fill = COL_BORROW, width = 0.72) +
   geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.5) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
-  scale_fill_distiller(palette = "Blues", direction = 1) +
-  labs(title = str_wrap("27-расм. Кредитни ўз вақтида тўлаш бўйича эслатмаларнинг энг самарали воситаси",
-                        width = 45),
-       x = "%", y = NULL) +
+  labs(
+    title = "27-расм. Қайси эслатма усуллари самарали деб баҳоланади",
+    subtitle = sprintf("Қарздорлар, n=%d", nrow(borrowers)),
+    x = "Улуш (%)",
+    y = NULL
+  ) +
   theme_cbuz()
 save_fig("chart_26_effective_reminders")
 
@@ -1060,21 +1197,6 @@ ggplot(fnpl_sum, aes(x = pct, y = label, fill = pct)) +
 save_fig("chart_27_family_npl_reasons")
 
 # ── Chart 28: Support measures needed ────────────────────────
-supp_cols <- c(
-  "family_biz_support__business_training",
-  "family_biz_support__flexible_schedule",
-  "family_biz_support__staged_disbursement",
-  "family_biz_support__business_plan_help",
-  "family_biz_support__strengthen_oversight",
-  "family_biz_support__cash_and_card",
-  "family_biz_support__other"
-)
-supp_labels <- c(
-  "Бизнес тренинглар", "Мослашувчан жадвал", "Босқичма-босқич бериш",
-  "Бизнес режа ёрдами", "Назоратни кучайтириш", "Нақд ва пластик", "Бошқа"
-)
-names(supp_labels) <- supp_cols
-
 supp_sum <- fam %>%
   summarise(across(all_of(supp_cols), ~ 100 * mean(.x, na.rm = TRUE))) %>%
   pivot_longer(everything(), names_to = "support", values_to = "pct") %>%
@@ -1083,15 +1205,15 @@ supp_sum <- fam %>%
     label = fct_reorder(label, pct)
   )
 
-ggplot(supp_sum, aes(x = pct, y = label, fill = label)) +
-  geom_col(show.legend = FALSE) +
-  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
+ggplot(supp_sum, aes(x = pct, y = label)) +
+  geom_col(fill = COL_BORROW, width = 0.72) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.6) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
-  scale_fill_manual(values = colorRampPalette(RColorBrewer::brewer.pal(8, "Set2"))(nrow(supp_sum)))+
   labs(
-    title    = "31-расм. Оилавий кредит олувчиларга зарур кўмак чоралари (%)",
-    subtitle = sprintf("N = %d", N_fam),
-    x = "%", y = NULL
+    title = "31-расм. Оилавий кредит олувчиларга зарур кўмак чоралари",
+    subtitle = sprintf("Оилавий тадбиркорлик кредити олганлар, n=%d", N_fam),
+    x = "Улуш (%)",
+    y = NULL
   ) +
   theme_cbuz()
 save_fig("chart_28_family_support")
@@ -1129,21 +1251,6 @@ ggplot(npl_by_type,
 save_fig("chart_29_npl_by_credit_type")
 
 # ── Chart 30: Why took family credit ─────────────────────────
-fbiz_cols <- c(
-  "family_biz_reason__business_idea",
-  "family_biz_reason__lower_interest",
-  "family_biz_reason__inspired_by_others",
-  "family_biz_reason__social_pressure",
-  "family_biz_reason__trusted_advice",
-  "family_biz_reason__other"
-)
-fbiz_labels <- c(
-  "Бизнес ғояни амалга ошириш", "Паст фоизлар",
-  "Атрофимдагилар тажрибаси", "Босим остида",
-  "Маслаҳатга ишониш", "Бошқа"
-)
-names(fbiz_labels) <- fbiz_cols
-
 fbiz_sum <- fam %>%
   summarise(across(all_of(fbiz_cols), ~ 100 * mean(.x, na.rm = TRUE))) %>%
   pivot_longer(everything(), names_to = "reason", values_to = "pct") %>%
@@ -1152,14 +1259,15 @@ fbiz_sum <- fam %>%
     label = fct_reorder(label, pct)
   )
 
-ggplot(fbiz_sum, aes(x = pct, y = label, fill = label)) +
-  geom_col(show.legend = FALSE) +
-  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
+ggplot(fbiz_sum, aes(x = pct, y = label)) +
+  geom_col(fill = "#7A7A7A", width = 0.72) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.6) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
-  scale_fill_manual(values = colorRampPalette(RColorBrewer::brewer.pal(12, "Set3"))(nrow(fbiz_sum)))+
   labs(
-    title    = "29-расм. Нима учун оилавий кредит олинган?",
-    x = "%", y = NULL
+    title = "29-расм. Нега оилавий кредит олинган",
+    subtitle = sprintf("Оилавий тадбиркорлик кредити олганлар, n=%d", N_fam),
+    x = "Улуш (%)",
+    y = NULL
   ) +
   theme_cbuz()
 save_fig("chart_30_why_family_credit")
@@ -1175,19 +1283,30 @@ finlit_sum <- borrowers %>%
   group_by(repay_group, fin_lit_score) %>%
   summarise(n = n(), .groups = "drop") %>%
   group_by(repay_group) %>%
-  mutate(pct = 100 * n / sum(n))
+  mutate(
+    pct = 100 * n / sum(n),
+    fin_lit_score = forcats::fct_rev(factor(fin_lit_score, levels = sort(unique(fin_lit_score))))
+  ) %>%
+  ungroup()
 
-ggplot(finlit_sum,
-       aes(x = factor(fin_lit_score), y = pct, fill = repay_group)) +
-  geom_col(position = "dodge") +
-  geom_text(aes(label = sprintf("%.1f%%", pct)),
-            position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
+ggplot(finlit_sum, aes(x = pct, y = fin_lit_score, fill = repay_group)) +
+  geom_col(show.legend = FALSE, width = 0.68) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.2) +
+  facet_wrap(~ repay_group, nrow = 1) +
   scale_fill_manual(values = PALETTE3) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
-  labs(title = "26-расм. Қарз бўйича тўлов ҳолатига кўра молиявий саводхонлик даражаси",
-       x = "Молиявий саводхонлик бали (0 дан – 4 гача)", y = "%") +
-  theme_cbuz()
-save_fig("chart_33_finlit_by_status")
+  scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
+  labs(
+    title = "26-расм. Тўлов ҳолатига кўра молиявий саводхонлик баллари",
+    subtitle = status_n_text,
+    caption = str_wrap("Изоҳ: Мазкур индекс 4 компонент йиғиндисидан тузилган (0-4).Булар: шартнома билан танишиш, шартларни тушуниш, кредит рейтинги ҳақида хабардорлик ва тўлов кечикиши кредит тарихига таъсир қилишини билиш.
+                       4 энг юқори балл, 0 энг паст бал.",
+                       width = 100),
+    x = "Улуш (%)",
+    y = "Молиявий саводхонлик бали"
+  ) +
+  theme_cbuz() +
+  theme(strip.text = element_text(face = "bold"))
+save_fig("chart_33_finlit_by_status", w = 12.8, h = 6.2)
 
 # ── Chart 34: Credit score motivates behaviour ────────────────
 crsc_sum <- borrowers %>%
@@ -1215,41 +1334,30 @@ knows_sum <- borrowers %>%
   group_by(repay_group, knows_delay_effect) %>%
   summarise(n = n(), .groups = "drop") %>%
   group_by(repay_group) %>%
-  mutate(pct = 100 * n / sum(n)) %>% 
-  filter(knows_delay_effect != "Жавоб бериш қийин (ўқилмасин)")
+  mutate(
+    pct = 100 * n / sum(n),
+    knows_delay_effect = forcats::fct_rev(factor(as.character(knows_delay_effect), levels = unique(as.character(na.omit(borrowers$knows_delay_effect)))))
+  ) %>%
+  ungroup() %>%
+  filter(as.character(knows_delay_effect) != "Жавоб бериш қийин (ўқилмасин)")
 
-ggplot(knows_sum,
-       aes(x = str_wrap(as.character(knows_delay_effect), 20),
-           y = pct, fill = repay_group)) +
-  geom_col(position = "dodge") +
-  geom_text(aes(label = sprintf("%.1f%%", pct)),
-            position = position_dodge(width = 0.9), vjust = -0.4, size = 3.5) +
+ggplot(knows_sum, aes(x = pct, y = knows_delay_effect, fill = repay_group)) +
+  geom_col(show.legend = FALSE, width = 0.68) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.2) +
+  facet_wrap(~ repay_group, nrow = 1) +
   scale_fill_manual(values = PALETTE3) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.18))) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
   labs(
-    title = str_wrap("24-расм. Қарздорлар тўлов ҳолатига кўра кечикишнинг кредит тарихига таъсирини билиш даражаси",
-                     width = 45),
-    x = NULL, y = "%"
+    title = str_wrap("24-расм. Тўлов ҳолатига кўра кечикишнинг кредит тарихига таъсири ҳақидаги билим", width = 45),
+    subtitle = status_n_text,
+    x = "Улуш (%)",
+    y = NULL
   ) +
   theme_cbuz() +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))
-save_fig("chart_35_knows_delay_effect")
+  theme(strip.text = element_text(face = "bold"))
+save_fig("chart_35_knows_delay_effect", w = 12.8, h = 6.4)
 
 # ── Chart 36: Repayment priority ─────────────────────────────
-prio_cols <- c(
-  "repayment_priority__banks",
-  "repayment_priority__family_friends",
-  "repayment_priority__street_lenders",
-  "repayment_priority__formal_installment",
-  "repayment_priority__informal_installment",
-  "repayment_priority__mfi"
-)
-prio_labels <- c(
-  "Банклар", "Оила/Дўстлар", "Кўчада фоиз",
-  "Расмий насия", "Норасмий насия", "МФТ"
-)
-names(prio_labels) <- prio_cols
-
 prio_sum <- borrowers %>%
   summarise(across(all_of(prio_cols), ~ 100 * mean(.x, na.rm = TRUE))) %>%
   pivot_longer(everything(), names_to = "creditor", values_to = "pct") %>%
@@ -1258,13 +1366,16 @@ prio_sum <- borrowers %>%
     label = fct_reorder(label, pct)
   )
 
-ggplot(prio_sum, aes(x = pct, y = label, fill = label)) +
-  geom_col(show.legend = FALSE) +
-  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
+ggplot(prio_sum, aes(x = pct, y = label)) +
+  geom_col(fill = COL_BORROW, width = 0.72) +
+  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 3.6) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
-  scale_fill_brewer(palette = "Set2") +
-  labs(title = "15-расм. Қарзлар (кредитлар) бўйича тўлов устуворлиги",
-       x = "%", y = NULL) +
+  labs(
+    title = "15-расм. Қарзлар бўйича тўлов устуворлиги",
+    subtitle = sprintf("Қарздорлар, n=%d", nrow(borrowers)),
+    x = "Улуш (%)",
+    y = NULL
+  ) +
   theme_cbuz()
 save_fig("chart_36_repayment_priority")
 
@@ -1291,23 +1402,21 @@ save_fig("chart_37_acceptable_delay")
 # ── Chart 38: Peers repayment behaviour perception ────────────
 peers_sum <- df %>%
   filter(!is.na(peers_repay_behavior)) %>%
-  count(peers_repay_behavior) %>%
+  count(peers_repay_behavior, name = "n") %>%
   mutate(
-    pct   = 100 * n / sum(n),
-    label = fct_reorder(str_wrap(as.character(peers_repay_behavior), 38), n)
+    pct = 100 * n / sum(n),
+    label = str_wrap(as.character(peers_repay_behavior), 34),
+    label = fct_reorder(label, n)
   )
 
-ggplot(peers_sum, aes(x = n, y = label, fill = label)) +
-  geom_col(show.legend = FALSE) +
-  geom_text(aes(label = sprintf("%.1f%%", pct)), hjust = -0.1, size = 4) +
-  scale_x_continuous(expand = expansion(mult = c(0, 0.22))) +
-  scale_fill_brewer(palette = "RdYlGn") +
+ggplot(peers_sum, aes(x = n, y = label)) +
+  geom_col(fill = "#7A7A7A", width = 0.72) +
+  geom_text(aes(label = sprintf("n=%d | %.1f%%", n, pct)), hjust = -0.1, size = 3.5) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.24))) +
   labs(
-    title = str_wrap(
-      "13-расм. Респондентларнинг ўз атрофидагилар тўлов ҳолати бўйича фикрлари",
-      width = 45
-    ),
-    x = "Сон",
+    title = "13-расм. Атрофдагиларнинг тўлов интизоми ҳақидаги қарашлар",
+    subtitle = sprintf("Барча респондентлар, n=%d", nrow(df)),
+    x = "Респондентлар сони",
     y = NULL
   ) +
   theme_cbuz()
@@ -1321,18 +1430,19 @@ cat("\n--- Enrichment Charts (39-42) ---\n")
 # ── Chart 39: Informal credit preference by region ───────────
 # "Informal" = family/friends, street lenders, pawnshops,
 #              informal installment (anything non-bank/MFI/formal)
-informal_pat <- regex(
-  "оила|дўст|нотаниш|кўча|норасмий",
-  ignore_case = TRUE
+informal_sources <- c(
+  "Оила аъзолари, дўстлар ёки танишларга",
+  "Кўчада фоиз эвазига пул (қарз) берувчи норасмий шахсларга",
+  "Норасмий насия хизматига (бозорлар, дўконлар в.б.)",
+  "Ломбардларга"
 )
 
 reg_inf <- df %>%
-  filter(!is.na(credit_source_primary), !is.na(region)) %>%
+  filter(!is.na(region)) %>%
   group_by(region) %>%
   summarise(
     n            = n(),
-    pct_informal = 100 * mean(
-      str_detect(credit_source_primary, informal_pat), na.rm = TRUE),
+    pct_informal = 100 * mean(!is.na(informal_reason)),
     .groups = "drop"
   ) %>%
   mutate(
@@ -1348,8 +1458,9 @@ reg_inf <- df %>%
 ggplot(reg_inf, aes(x = pct_informal, y = region_lbl, fill = tier)) +
   geom_col() +
   geom_text(
-    aes(label = sprintf("%.1f%%  (n=%d)", pct_informal, n)),
-    hjust = -0.05, size = 3.7
+    aes(label = sprintf("%.1f%%", pct_informal)),
+    hjust = -0.1, 
+    size = 3.7
   ) +
   scale_x_continuous(
     expand = expansion(mult = c(0, 0.28)),
@@ -1362,9 +1473,9 @@ ggplot(reg_inf, aes(x = pct_informal, y = region_lbl, fill = tier)) +
     breaks  = c("Юқори  (≥60%)", "Ўрта  (40–60%)", "Паст  (<40%)")
   ) +
   labs(
-    title    = "7-расм. Ҳудудлар кесимида норасмий қарз олиш устуворлиги (%)",
-    subtitle = "Норасмий = оила/дўстлар, кўчада фоиз, норасмий насия",
-    x        = "Норасмий манба танлаганлар улуши (%)",
+    title    = "7-расм. Ҳудудлар кесимида норасмий қарз олиш устворлиги",
+    subtitle = "Норасмий манбаларга мурожаат қилишини билдирганлар улуши",
+    x        = "(%)",
     y        = NULL,
     fill     = NULL
   ) +
@@ -1372,65 +1483,63 @@ ggplot(reg_inf, aes(x = pct_informal, y = region_lbl, fill = tier)) +
 save_fig("chart_39_informal_by_region", h = 6.5)
 
 # ── Chart 40: Q2.3 — Max willingness to borrow by source ─────
-# Q2.3 cols are named "1-2.3 ...", "2-2.3 ...", ... "8-2.3 ..."
 q23_cols <- grep("^[0-9]+-2\\.3", names(df), value = TRUE)
 
 q23_src_labels <- c(
   "Банк",
-  "Расмий насия\n(Texnomart, Uzum...)",
-  "Норасмий насия\n(бозор, дўконлар...)",
+  "Расмий насия\n(техно-дўкон платформалари)",
+  "Норасмий насия\n(бозор ва дўконлар)",
   "Кўчада фоиз\nберувчи шахс",
   "Микромолия\nташкилоти",
   "Ломбард",
   "Оила аъзолари /\nДўстлар",
   "Бошқа манба"
 )
+q23_band_map <- c(
+  "2.5" = "5 млн сўмгача",
+  "12.5" = "5-20 млн сўм",
+  "35" = "20-50 млн сўм",
+  "75" = "50-100 млн сўм",
+  "150" = "100+ млн сўм"
+)
+q23_band_levels <- unname(q23_band_map[c("2.5", "12.5", "35", "75", "150")])
 
 if (length(q23_cols) >= 8) {
-  q23_means <- df %>%
-    summarise(across(all_of(q23_cols[1:8]),
-                     ~ mean(.x, na.rm = TRUE))) %>%
-    pivot_longer(everything(),
-                 names_to  = "col",
-                 values_to = "mean_mln") %>%
+  q23_stats <- df %>%
+    summarise(across(all_of(q23_cols[1:8]), list(
+      pct = ~ 100 * mean(.x > 0, na.rm = TRUE),
+      median_code = ~ median(.x[.x > 0], na.rm = TRUE)
+    ))) %>%
+    pivot_longer(everything(), names_to = c("col", ".value"), names_pattern = "(.+)_(pct|median_code)") %>%
     mutate(
-      source      = q23_src_labels[seq_len(n())],
-      source      = fct_reorder(source, mean_mln),
+      source = q23_src_labels[seq_len(n())],
+      median_band = factor(unname(q23_band_map[as.character(median_code)]), levels = q23_band_levels),
+      median_order = median_code,
       source_type = case_when(
         str_detect(source, "Банк|Микромолия|Расмий насия") ~ "Расмий",
-        str_detect(source, "Оила")                         ~ "Яқинлардан (оила/дўст)",
-        TRUE                                                ~ "Норасмий"
+        str_detect(source, "Оила") ~ "Яқинлар",
+        TRUE ~ "Норасмий"
       )
-    )
-  
-  ggplot(q23_means,
-         aes(x = mean_mln, y = source, fill = source_type)) +
-    geom_col() +
-    geom_text(
-      aes(label = sprintf("%.1f млн", mean_mln)),
-      hjust = -0.1, size = 3.9
-    ) +
+    ) %>%
+    filter(source != "Бошқа манба") %>%
+    arrange(desc(median_order), desc(pct)) %>%
+    mutate(source = factor(source, levels = source))
+
+  ggplot(q23_stats, aes(x = median_order, y = source, fill = source_type)) +
+    geom_col(width = 0.72, show.legend = FALSE) +
+    geom_text(aes(label = sprintf("%s | %.0f%%", as.character(median_band), pct)), hjust = -0.1, size = 3.6) +
+    scale_fill_manual(values = c("Расмий" = COL_BORROW, "Яқинлар" = COL_DELAY, "Норасмий" = COL_NPL)) +
     scale_x_continuous(expand = expansion(mult = c(0, 0.28))) +
-    scale_fill_manual(
-      values = c(
-        "Расмий"              = COL_BORROW,
-        "Яқинлардан (оила/дўст)"  = COL_DELAY,
-        "Норасмий"            = COL_NPL
-      )
-    ) +
     labs(
-      title    = "6-расм. Қарз олиш манбаларига кўра олинадиган ўртача қарз миқдори (млн сўм)",
-      x        = "Ўртача сумма (млн сўм)",
-      y        = NULL,
-      fill     = "Манба тури"
+      title = "6-расм. Манбалар кесимида олинадиган медиан қарз миқдори",
+      subtitle = "Қийматлар фақат 0 дан катта жавоблар бўйича медиан midpoint кодга асосланган",
+      x = "Медиан миқдор (кодланган midpoint, млн сўм)",
+      y = NULL
     ) +
-    theme_cbuz() +
-    theme(legend.position = "right")
-  save_fig("chart_40_q23_loan_size_by_source", h = 5.5)
-  
+    theme_cbuz()
+  save_fig("chart_40_q23_loan_size_by_source", h = 6.1)
 } else {
-  message("  [SKIP chart 40] Expected 8 Q2.3 columns, found: ",
-          length(q23_cols))
+  message("  [SKIP chart 40] Expected 8 Q2.3 columns, found: ", length(q23_cols))
 }
 
 # ── Chart 41: Financial buffer distribution ───────────────────
@@ -1477,8 +1586,8 @@ prod_npl <- borrowers %>%
   ) %>%
   mutate(
     label = ifelse(productive_use_flag == 1,
-                   "Мақсадли фойдаланиш\n(productive use)",
-                   "Мақсадсиз фойдаланиш\n(non-productive)"),
+                   "Мақсадли фойдаланиш",
+                   "Мақсадсиз фойдаланиш"),
     fill_col = ifelse(npl_rate > 52, COL_NPL, COL_DELAY)
   )
 
@@ -1504,8 +1613,21 @@ save_fig("chart_42_npl_by_productive_use")
 # ============================================================
 # Done
 # ============================================================
-n_saved <- length(list.files("outputs/figures", pattern = "\\.png$"))
-cat(sprintf("\n=== 07_visualise.R complete ===\n"))
-cat(sprintf("Charts saved to outputs/figures/  (%d PNG files total)\n", n_saved))
-cat(sprintf("  Charts 01–38 : core report blocks\n"))
-cat(sprintf("  Charts 39–42 : enrichment charts for Доклад_катта-32\n"))
+n_saved <- length(list.files("outputs/figures/final_uz", pattern = "\\.png$"))
+cat(sprintf("\n=== 16_visualize_report_final_uz.R complete ===\n"))
+cat(sprintf("Чизмалар outputs/figures/final_uz/ га сақланди  (%d PNG файл)\n", n_saved))
+cat(sprintf("  Чизмалар 01–38 : асосий репорт блоклари\n"))
+cat(sprintf("  Чизмалар 39–42 : қўшимча текширув чизмалари\n"))
+
+
+
+
+
+
+
+
+
+
+
+
+

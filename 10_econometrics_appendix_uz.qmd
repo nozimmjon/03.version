@@ -1,0 +1,212 @@
+---
+title: "Эконометрик таҳлил методологияси"
+subtitle: "Илова учун алоҳида ҳужжат"
+author: "Research Department"
+date: today
+date-format: "YYYY-MM-DD"
+lang: uz
+format:
+  docx:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    fig-width: 6.8
+    fig-height: 4.6
+    fig-dpi: 180
+    fig-align: center
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(dplyr)
+library(readr)
+library(stringr)
+library(tibble)
+library(knitr)
+
+df <- readRDS("data/intermediate/04_analytical.rds")
+
+encode_model_vars <- function(dat) {
+  dat %>%
+    mutate(
+      income_variability_num = case_when(
+        str_detect(as.character(income_variability), "Барқарор") ~ 1L,
+        str_detect(as.character(income_variability), "Бироз") ~ 2L,
+        str_detect(as.character(income_variability), "Жуда") ~ 3L,
+        TRUE ~ NA_integer_
+      ),
+      is_male = as.integer(!is.na(gender) & str_detect(as.character(gender), "Эркак")),
+      is_married = as.integer(!is.na(marital_status) & str_detect(as.character(marital_status), "Турмуш")),
+      has_higher_edu = as.integer(!is.na(education) & str_detect(as.character(education), "Олий")),
+      region = if ("region" %in% names(dat)) as.factor(region) else NULL
+    )
+}
+
+build_model_df <- function(dat, predictors, extra = character(0)) {
+  vars <- unique(c("is_npl", predictors, extra))
+  dat %>%
+    select(any_of(vars)) %>%
+    filter(!is.na(is_npl)) %>%
+    tidyr::drop_na()
+}
+
+borrowers <- df %>% filter(has_loan == 1L) %>% encode_model_vars()
+core_predictors <- c(
+  "age", "is_male", "is_married", "has_higher_edu",
+  "income_midpoint_mln_uzs", "dsr_midpoint", "financial_buffer_months",
+  "income_variability_num", "fin_lit_score", "employed_binary",
+  "hh_size", "productive_use_flag"
+)
+core_predictors <- intersect(core_predictors, names(borrowers))
+base_df <- build_model_df(borrowers, core_predictors)
+
+N_total <- nrow(df)
+N_borrow <- nrow(borrowers)
+N_model <- nrow(base_df)
+N_excluded <- N_borrow - N_model
+
+sample_tbl <- tibble::tribble(
+  ~`Босқич`, ~`N`, ~`Изоҳ`,
+  "Умумий сўров танланмаси", N_total, "Барча респондентлар",
+  "Қарздорлар танланмаси", N_borrow, "`has_loan = 1` бўлган респондентлар",
+  "Якуний econometric sample", N_model, "Моделга киритилган ўзгарувчилар бўйича тўлиқ маълумотга эга кузатувлар",
+  "Чиқариб ташланган қарздорлар", N_excluded, "Етишмаётган қийматлар сабабли"
+)
+
+var_tbl <- tibble::tribble(
+  ~`Ўзгарувчи`, ~`Тури`, ~`Қисқа таъриф`, ~`Талқин`,
+  "is_npl", "Бинар", "3 ой ва ундан кўп кечиктириш ҳолати", "1 = NPL, 0 = NPL эмас",
+  "age", "Сонли", "Респондент ёши", "Йилларда",
+  "is_male", "Бинар", "Жинс", "1 = эркак",
+  "is_married", "Бинар", "Никоҳ ҳолати", "1 = турмуш қурган",
+  "has_higher_edu", "Бинар", "Олий маълумотга эгалик", "1 = олий маълумот бор",
+  "income_midpoint_mln_uzs", "Сонли", "Даромад диапазонининг midpoint қиймати", "Млн сўм",
+  "dsr_midpoint", "Сонли", "Қарз тўлови / даромад нисбати", "Улуш",
+  "financial_buffer_months", "Сонли", "Молиявий захиранинг midpoint кўрсаткичи", "Ой",
+  "income_variability_num", "Тартибли", "Даромад барқарорлиги", "1–3 шкала",
+  "fin_lit_score", "Индекс", "Молиявий саводхонлик йиғма индекси", "0–4",
+  "employed_binary", "Бинар", "Расмий ёки мустақил бандлик", "1 = банд",
+  "hh_size", "Сонли", "Уй хўжалиги аъзолари сони", "Киши",
+  "productive_use_flag", "Бинар", "Қарздан продуктив мақсадда фойдаланиш", "1 = ҳа"
+)
+
+constructed_tbl <- tibble::tribble(
+  ~`Кўрсаткич`, ~`Манба`, ~`Қурилиш усули`, ~`Шкала`, ~`Изоҳ`,
+  "income_variability_num", "income_variability", "Тартибли қайта кодлаш", "1=барқарор; 2=бироз беқарор; 3=жуда беқарор", "+1 = бир поғона ёмонлашиш",
+  "fin_lit_score", "4 та компонент", "Бинар компонентлар йиғиндиси", "0–4", "Шартнома ўқиш, шартларни тушуниш, кредит рейтинги, кечикиш таъсири",
+  "financial_buffer_months", "financial_buffer", "Midpoint кодлаш", "0.0; 1.5; 3.5; 5.5; 8.0", "`6 ойдан кўпроқ` шартли равишда 8.0 деб кодланган",
+  "income_midpoint_mln_uzs", "hh_income_cat", "Midpoint кодлаш", "Млн сўм", "Диапазонлардан тахминий миқдорий қиймат",
+  "dsr_midpoint", "dsr_cat", "Midpoint кодлаш", "Улуш", "Талқинда +10 фоиз пункт қўлланади",
+  "has_higher_edu", "education", "Бинарлаш", "0/1", "1 = олий маълумот",
+  "employed_binary", "employment", "Бинарлаш", "0/1", "1 = давлат, хусусий ёки мустақил банд",
+  "productive_use_flag", "loan_purpose блоки", "Бир нечта мақсадларни йиғиш", "0/1", "Бизнес ва бошқа продуктив йўналишлар"
+)
+
+spec_tbl <- tibble::tribble(
+  ~`Модель`, ~`Тури`, ~`Спецификация`, ~`Мақсад`,
+  "Базавий logit", "GLM logit", "Асосий омиллар билан", "Reference model",
+  "Logit + ҳудудий FE", "GLM logit", "Асосий омиллар + factor(region)", "Ҳудудлар кесимидаги доимий фарқларни назорат қилиш",
+  "Logit + ночизиқли terms", "GLM logit", "Асосий омиллар + DSR² ва income²", "Чизиқли бўлмаган боғлиқликни текшириш",
+  "Penalized logit (L1)", "LASSO", "cv.glmnet(alpha = 1)", "Стабиллик ва селекцияга ҳассосликни баҳолаш",
+  "Penalized logit (L2)", "Ridge", "cv.glmnet(alpha = 0)", "Коэффициентлар барқарорлигини текшириш"
+)
+
+fit_tbl <- read_csv("outputs/tables/econometrics/main_report/T1_model_fit_main_report.csv", show_col_types = FALSE)
+ame_tbl <- read_csv("outputs/tables/econometrics/main_report/T2_region_fe_ame_main_report.csv", show_col_types = FALSE)
+
+kbl <- function(x, caption = NULL) knitr::kable(x, format = "pandoc", caption = caption)
+```
+
+# Тадқиқот мақсади
+
+Ушбу эконометрик таҳлилнинг мақсади қарздорларда муаммоли кредит (`NPL`) эҳтимоли билан боғлиқ омилларни аниқлаш ва уларнинг нисбий аҳамиятини баҳолашдан иборат. Моделлар қарздорларни сегментация қилиш, хавф профилларини тушуниш ва сиёсат нуқтаи назаридан муҳим омилларни ажратиш учун қўлланилади. Натижалар сабаб-оқибат муносабатини эмас, балки сўров маълумотлари доирасида кузатилган статистик боғлиқликни ифодалайди.
+
+# Таҳлил танланмаси
+
+```{r}
+kbl(sample_tbl, caption = "Жадвал A1. Таҳлил танланмасининг шаклланиши")
+```
+
+Эслатма: модел учун якуний танланма `listwise deletion` орқали шаклланган, яъни натижавий ва тушунтирувчи ўзгарувчилардан камида бири етишмайдиган кузатувлар чиқариб ташланган.
+
+# Ўзгарувчилар таърифи
+
+## Асосий ўзгарувчилар
+
+```{r}
+kbl(var_tbl, caption = "Жадвал A2. Натижавий ва асосий тушунтирувчи ўзгарувчилар")
+```
+
+## Конструкция қилинган кўрсаткичлар
+
+```{r}
+kbl(constructed_tbl, caption = "Жадвал A3. Конструкция қилинган ва қайта кодланган кўрсаткичлар")
+```
+
+### Молиявий захира бўйича қўшимча изоҳ
+
+`financial_buffer_months` респондентнинг даромади тўхтаб қолган тақдирда неча ой давомида ўзининг кредит (қарз) тўловларини амалга ошира олиши ҳақидаги сўров жавоби асосида тузилган. Сўровда ушбу савол интервалли тоифаларда берилган: `умуман эга эмасман`, `1–2 ой`, `3–4 ой`, `5–6 ой`, `6 ойдан кўпроқ`, ҳамда `жавоб бериш қийин`. Эконометрик моделда ушбу жавоблар midpoint усули асосида ойларга ўтказилган: `0.0`, `1.5`, `3.5`, `5.5` ва `8.0`. Юқори очиқ тоифа бўлган `6 ойдан кўпроқ` шартли равишда `8.0` ой деб кодланган. Шу боис бу кўрсаткич аниқ календар ойлар эмас, балки яқинлаштирилган молиявий буфер шкаласини ифодалайди.
+
+# Модел спецификациялари
+
+```{r}
+kbl(spec_tbl, caption = "Жадвал A4. Модел спецификациялари")
+```
+
+# Модел сифатини таққослаш
+
+```{r}
+kbl(fit_tbl, caption = "Жадвал A5. Робаст моделлар бўйича fit кўрсаткичлари")
+```
+
+Эслатма: `AUC` модельнинг NPL ва non-NPL ҳолатларини ажрата олиш даражасини, `Brier` прогноз қилинган эҳтимоллар сифати, `McFadden R2` эса GLM мослашувини ифодалайди.
+
+# Асосий натижалар
+
+## Танланган модель бўйича AME
+
+Қиёсий натижалар асосида ҳудудий fixed effects қўшилган `region_fe_logit` модели асосий талқин учун танланди. Жадвалда `average marginal effects (AME)` келтирилган. Ушбу кўрсаткич омил ўзгарганда NPL эҳтимоли ўртача неча фоиз пунктга ўзгаришини кўрсатади.
+
+```{r}
+kbl(ame_tbl, caption = "Жадвал A6. Танланган region FE модели бўйича асосий AME натижалари")
+```
+
+## Визуаллаштириш
+
+![Статистик аҳамиятли омиллар бўйича AME](outputs/figures/refined_uz/RV1b_significant_effects_region_fe_uz.png)
+
+Ушбу график region FE модели бўйича статистик аҳамиятли омилларнинг NPL эҳтимоли билан ўртача боғлиқлигини фоиз пунктларда кўрсатади. Натижаларга кўра, даромад барқарорлиги бир тоифага ёмонлашганда NPL эҳтимоли ўртача 4,25 фоиз пунктга юқорироқ бўлади. Қарз юки (DSR) 10 фоиз пунктга ошганда эса NPL эҳтимоли ўртача 1,5 фоиз пунктга ортади. Аксинча, олий маълумот мавжуд бўлганда NPL эҳтимоли ўртача 9,65 фоиз пунктга пастроқ, молиявий саводхонлик 1 баллга юқорироқ бўлганда 5,52 фоиз пунктга, ёш 10 йилга каттароқ бўлганда 5,0 фоиз пунктга, молиявий захира 1 ойга кўпроқ бўлганда 3,53 фоиз пунктга пастроқ бўлади. Даромад миқдорининг таъсири ҳам манфий, бироқ нисбатан кичик бўлиб, 1 млн сўмга ошганда NPL эҳтимоли ўртача 0,33 фоиз пунктга камаяди.
+
+![Region FE модели бўйича AME ва 95% ишонч оралиғи](outputs/figures/refined_uz/RV2_ame_uncertainty_region_fe_uz.png)
+
+# Талқин қоидалари ва чекловлар
+
+Эконометрик натижаларни талқин қилишда қуйидаги қоидаларга амал қилиш лозим:
+
+- натижалар сабаб-оқибат муносабатини эмас, статистик боғлиқликни кўрсатади;
+- midpoint ва ordinal кодлашлар туфайли айрим таъсирлар тахминий хусусиятга эга;
+- `+1` ўзгариш ҳар доим бир хил маънога эга эмас: масалан, даромад барқарорлигида бу бир тоифадан кейинги, нисбатан беқарорроқ тоифага ўтишни англатади;
+- модел индивидуал даражада қатъий прогноз воситаси эмас, балки риск профиллаш ва сегментация воситасидир.
+
+Ушбу таҳлил қуйидаги чекловларга эга:
+
+- танланма қарздорлар кесимида шаклланган бўлиб, натижаларни миллий кредит портфелига тўғридан-тўғри экстраполяция қилиш мумкин эмас;
+- бир қатор ўзгарувчилар респондентнинг ўз баёнига асосланган;
+- маълумотларнинг бир қисми interval ва midpoint ёндашуви орқали кодланган;
+- етишмаётган қийматлар сабабли айрим кузатувлар моделдан чиқариб ташланган;
+- кузатилмаган омиллар таъсири тўлиқ назорат қилинмаган бўлиши мумкин.
+
+# Репликация
+
+Ушбу иловада келтирилган натижалар қуйидаги файллар ва скриптларга асосланади:
+
+- `R/11_econometrics_robust.R`
+- `outputs/tables/econometrics/M4_marginal_effects.csv`
+- `outputs/tables/econometrics/M5_model_fit_comparison.csv`
+- `outputs/tables/econometrics/main_report/T1_model_fit_main_report.csv`
+- `outputs/tables/econometrics/main_report/T2_region_fe_ame_main_report.csv`
+- `outputs/figures/refined_uz/RV1b_significant_effects_region_fe_uz.png`
+- `outputs/figures/refined_uz/RV2_ame_uncertainty_region_fe_uz.png`

@@ -81,15 +81,26 @@ if (length(q21_cols) > 0 && "repay_group" %in% names(borrowers)) {
     summarise(
       pct_ok = 100 * mean(ok == 1L, na.rm = TRUE),
       .groups = "drop"
+    ) %>% 
+    mutate(
+      repay_group = recode(as.character(repay_group),
+                           "On-time" = "Ўз вақтида тўловчи",
+                           "1-3 month delay" = "1-3 ой кечикувчи",
+                           "NPL (3+ months)" = "NPL"
+      ),
+      repay_group = factor(repay_group, levels = c("Ўз вақтида тўловчи", "1-3 ой кечикувчи", "NPL"), ordered = TRUE)
     )
+  
 
   ggplot(pdat, aes(x = repay_group, y = fct_reorder(purpose, pct_ok, .fun = mean), fill = pct_ok)) +
     geom_tile(color = "white", linewidth = 0.2) +
     geom_text(aes(label = sprintf("%.0f", pct_ok)), size = 3, color = "black") +
     scale_fill_gradient(low = "#edf8fb", high = "#006d2c", labels = label_number(suffix = "%")) +
     labs(
-      title = "Нима мақсадда қарз (кредит) олиш мақсадга мувофиқ?",
-      subtitle = "тўлов ҳолати бўйича мақсадга мувофиқлигини билдирган респондентлар улуши",
+      title = str_wrap("9-расм. Нима мақсадда қарз (кредит) олиш мақсадга мувофиқ?",
+                       width = 45),
+      subtitle = str_wrap("Тўлов ҳолати бўйича мақсадга мувофиқлигини билдирган респондентлар улуши",
+                          width = 45),
       x = NULL, y = NULL, fill = "% Appropriate"
     ) +
     theme_pub()
@@ -103,48 +114,107 @@ if (length(q21_cols) > 0 && "repay_group" %in% names(borrowers)) {
 # -- EH2. Q2.3 preferred source by loan-size willingness ----------------------
 tee("\nEH2: Q2.3 source preference by amount")
 q23_cols <- names(df)[str_detect(names(df), "^\\d+-2\\.3")]
+q23_label_map <- c(
+  "Банк ташкилотидан" = "Банк ташкилотлари",
+  "Расмий насия хизматларидан (“Техномарт”, “Узум”, “Ишонч” в.б.)" = "Расмий насия хизматлари",
+  "Норасмий насия хизматидан (бозорлар, дўконлар в.б.)" = "Норасмий насия хизматлари",
+  "Кўчада фоиз эвазига пул (қарз) берувчи норасмий шахслардан" = "Норасмий шахслар",
+  "Микромолия ташкилотлардан" = "Микромолия ташкилотлари",
+  "Ломбардлардан" = "Ломбардлар",
+  "Оила аъзолари, дўстлар ёки танишлардан" = "Оила аъзолари ёки танишлар",
+  "Бошқа манбалардан" = "Бошқа манбалар"
+)
+q23_band_map <- c(
+  "2.5" = "5 млн сўмгача",
+  "12.5" = "5-20 млн сўм",
+  "35" = "20-50 млн сўм",
+  "75" = "50-100 млн сўм",
+  "150" = "100+ млн сўм"
+)
+q23_band_levels <- unname(q23_band_map[c("2.5", "12.5", "35", "75", "150")])
 
 if (length(q23_cols) > 0) {
-  pdat <- df %>%
+  q23_long <- df %>%
     select(all_of(q23_cols)) %>%
     pivot_longer(cols = everything(), names_to = "source_col", values_to = "amount_mln") %>%
-    mutate(source = clean_label(source_col)) %>%
+    mutate(
+      source_raw = clean_label(source_col),
+      source = recode(source_raw, !!!q23_label_map),
+      amount_band = factor(unname(q23_band_map[as.character(amount_mln)]), levels = q23_band_levels)
+    )
+
+  pdat <- q23_long %>%
     group_by(source) %>%
     summarise(
       pct_willing = 100 * mean(amount_mln > 0, na.rm = TRUE),
-      mean_if_willing = mean(amount_mln[amount_mln > 0], na.rm = TRUE),
+      median_code = median(amount_mln[amount_mln > 0], na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    mutate(source = fct_reorder(source, mean_if_willing))
+    filter(source != "Бошқа манбалар") %>%
+    mutate(      source = fct_reorder(source, median_code)
+    )
 
-  ggplot(pdat, aes(x = mean_if_willing, y = source, fill = pct_willing)) +
+  ggplot(pdat, aes(x = median_code, y = source, fill = pct_willing)) +
     geom_col() +
-    geom_text(aes(label = sprintf("%.1f mln | %.0f%% willing", mean_if_willing, pct_willing)),
-              hjust = -0.05, size = 3.2) +
+    geom_text(aes(label = sprintf("%.1f млн | %.0f%% респондент", median_code, pct_willing)),
+              hjust = -0.05, size = 3.4) +
     scale_fill_gradient(low = "#deebf7", high = "#08519c") +
     scale_x_continuous(expand = expansion(mult = c(0, 0.28))) +
     labs(
-      title = "EH2. Preferred loan source by amount capacity",
-      subtitle = "Mean maximum amount among willing respondents (million UZS)",
-      x = "Mean amount if willing (million UZS)", y = NULL, fill = "% willing"
+      title = str_wrap("6-расм. Қарз олиш миқдори ва йўналишлари бўйича афзаллик", width = 45),
+      subtitle = "Медиан миқдор (stored midpoint code) ва манбани танлаганлар улуши; фақат 0 дан катта жавоблар",
+      x = "Медиан миқдор (кодланган midpoint, млн сўм)", y = NULL, fill = "% респондент"
     ) +
     theme_pub()
 
   save_fig("EH2_q23_source_amount_preference", w = 11, h = 6.2)
+  n_plots <- n_plots + 1L
+
+  pdat_dist <- q23_long %>%
+    filter(source != "Бошқа манбалар", amount_mln > 0) %>%
+    group_by(source) %>%
+    summarise(median_code = median(amount_mln), n_source = n(), .groups = "drop") %>%
+    arrange(desc(median_code), desc(n_source))
+
+  pdat_heat <- q23_long %>%
+    filter(source != "Бошқа манбалар", amount_mln > 0) %>%
+    group_by(source, amount_band) %>%
+    summarise(n = n(), .groups = "drop") %>%
+    group_by(source) %>%
+    mutate(pct_within_source = 100 * n / sum(n), n_source = sum(n)) %>%
+    ungroup() %>%
+    mutate(
+      source_label = sprintf("%s (n=%d)", source, n_source),
+      source_label = factor(source_label, levels = sprintf("%s (n=%d)", pdat_dist$source, pdat_dist$n_source))
+    )
+
+  ggplot(pdat_heat, aes(x = amount_band, y = source_label, fill = pct_within_source)) +
+    geom_tile(color = "white", linewidth = 0.3) +
+    geom_text(aes(label = sprintf("%.0f%%", pct_within_source)), size = 3.2) +
+    scale_fill_gradient(low = "#eff3ff", high = "#08519c") +
+    labs(
+      title = str_wrap("6-1-расм. Манба кесимида ижобий қарз миқдорлари тақсимоти", width = 45),
+      subtitle = str_wrap("Фақат 0 дан катта жавоблар олинган; устунлар саволдаги ҳақиқий миқдор тоифаларини кўрсатади", width = 65),
+      x = "Қарз миқдори тоифаси", y = NULL, fill = "%"
+    ) +
+    theme_pub() +
+    theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+
+  save_fig("EH2b_q23_source_amount_distribution", w = 11.8, h = 6.6)
   n_plots <- n_plots + 1L
 } else {
   tee("  [SKIP] Q2.3 columns not available")
 }
 
 # -- EH3. Intended-use diversion vs NPL ---------------------------------------
-tee("\nEH3: Loan diversion vs NPL")
+tee("\nEH3: Қарздан мақсадли фойдаланиш ва NPL")
 if (all(c("loan_used_as_intended", "is_npl") %in% names(borrowers))) {
   pdat <- borrowers %>%
     mutate(
       lui_code = suppressWarnings(as.integer(loan_used_as_intended)),
       use_group = case_when(
-        lui_code == 1L ~ "Used as intended",
-        lui_code == 3L ~ "Diverted to other purpose",
+        lui_code == 1L ~ "Мақсадга кўра ишлатилган",
+        lui_code == 3L ~ "Бошқа мақсадга йўналтирилган",
         TRUE           ~ NA_character_
       )
     ) %>%
@@ -160,18 +230,18 @@ if (all(c("loan_used_as_intended", "is_npl") %in% names(borrowers))) {
     geom_col(width = 0.6, show.legend = FALSE) +
     geom_text(aes(label = sprintf("%.1f%%\n(n=%d)", npl_rate, n)), vjust = -0.3, size = 3.8) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.15)), labels = label_percent(scale = 1)) +
-    scale_fill_manual(values = c("Used as intended" = "#238b45", "Diverted to other purpose" = "#cb181d")) +
+    scale_fill_manual(values = c("Мақсадга кўра ишлатилган" = "#238b45", "Бошқа мақсадга йўналтирилган" = "#cb181d")) +
     labs(
-      title = "EH3. NPL rate by intended loan use",
-      subtitle = "Diversion from intended use is associated with higher NPL incidence",
-      x = NULL, y = "NPL rate"
+      title = "11-1-расм. Қарздан мақсадли фойдаланиш ҳолатига кўра NPL даражаси",
+      subtitle = "Қарз бошқа мақсадга йўналтирилганда NPL улуши юқорироқ кузатилган",
+      x = NULL, y = "NPL даражаси"
     ) +
     theme_pub()
 
   save_fig("EH3_loan_diversion_vs_npl", w = 8.5, h = 5.8)
   n_plots <- n_plots + 1L
 } else {
-  tee("  [SKIP] Required columns not available for EH3")
+  tee("  [SKIP] EH3 учун керакли устунлар мавжуд эмас")
 }
 
 # -- EH4. Third-party notification acceptability ------------------------------
@@ -204,10 +274,18 @@ if (length(q33_cols) > 0 && "repay_group" %in% names(borrowers)) {
 }
 
 # -- EH5. Straw borrowing / name-lending by repayment status ------------------
-tee("\nEH5: Straw borrowing exposure by repayment status")
+tee("\nEH5: Тўлов ҳолатига кўра ном мос келмаслиги билан боғлиқ қарз олиш ҳолатлари")
 if (all(c("is_straw_borrower", "is_borrowed_under_other_name", "repay_group") %in% names(borrowers))) {
   pdat <- borrowers %>%
     filter(!is.na(repay_group)) %>%
+    mutate(
+      repay_group = recode(as.character(repay_group),
+                           "On-time" = "Ўз вақтида тўловчи",
+                           "1-3 month delay" = "1-3 ой кечикувчи",
+                           "NPL (3+ months)" = "NPL"
+      ),
+      repay_group = factor(repay_group, levels = c("Ўз вақтида тўловчи", "1-3 ой кечикувчи", "NPL"), ordered = TRUE)
+    ) %>% 
     group_by(repay_group) %>%
     summarise(
       straw_borrower = 100 * mean(is_straw_borrower == 1L, na.rm = TRUE),
@@ -217,8 +295,8 @@ if (all(c("is_straw_borrower", "is_borrowed_under_other_name", "repay_group") %i
     pivot_longer(cols = c(straw_borrower, name_lent_out),
                  names_to = "indicator", values_to = "pct") %>%
     mutate(indicator = recode(indicator,
-                              straw_borrower = "Borrowed in another person's name",
-                              name_lent_out  = "Own name used by another borrower"))
+                              straw_borrower = "Бошқа шахс номидан қарз олинган",
+                              name_lent_out  = "Бошқага ўз номидан олиб берган"))
 
   ggplot(pdat, aes(x = repay_group, y = pct, fill = indicator)) +
     geom_col(position = position_dodge(width = 0.75), width = 0.7) +
@@ -226,16 +304,16 @@ if (all(c("is_straw_borrower", "is_borrowed_under_other_name", "repay_group") %i
               position = position_dodge(width = 0.75), vjust = -0.3, size = 3.2) +
     scale_y_continuous(labels = label_number(suffix = "%"), expand = expansion(mult = c(0, 0.15))) +
     labs(
-      title = "EH5. Name-mismatch borrowing exposure",
-      subtitle = "Two forms: straw borrowing and name-lending",
-      x = NULL, y = "% of borrowers"
+      title = "Бошқалар номидан фойдаланиб қарз олиш ҳолатлари",
+      subtitle = "Икки ҳолат кўрсатилган: бошқа шахс номидан ўзига қарз олиш ва ўз номидан бошқага қарз олиб бериш",
+      x = NULL, y = "Қарздорлар улуши (%)"
     ) +
     theme_pub()
 
   save_fig("EH5_straw_borrowing_by_repayment", w = 10.5, h = 6)
   n_plots <- n_plots + 1L
 } else {
-  tee("  [SKIP] Required straw-borrowing fields not available")
+  tee("  [SKIP] EH5 учун керакли устунлар мавжуд эмас")
 }
 
 # -- EH6. Reminder frequency and effectiveness ---------------------------------
@@ -364,4 +442,7 @@ if ("repayment_culture_suggestions" %in% names(df)) {
 
 tee(sprintf("\nTotal enrichment charts written: %d", n_plots))
 tee("=== 10_enrich_charts.R complete ===")
+
+
+
 
